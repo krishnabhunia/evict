@@ -4,6 +4,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- Windows Forms only for NotifyIcon (tray icon + balloon/toast notifications). -->
+    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Evict.App</RootNamespace>
     <AssemblyName>Evict</AssemblyName>
     <AssemblyTitle>Evict Uninstaller</AssemblyTitle>
@@ -33,6 +35,9 @@
 
   <ItemGroup>
     <Using Include="System.IO" />
+    <!-- Keep the WPF names (Application, MessageBox, Clipboard…) unambiguous: WinForms is referenced explicitly where used. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
   </ItemGroup>
 
   <ItemGroup>

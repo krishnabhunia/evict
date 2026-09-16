@@ -333,6 +333,7 @@ public sealed class InstallMonitorService
             using var proc = Process.Start(psi);
             if (proc != null)
             {
+                ProcessRunner.NotifyStarted(proc.Id);
                 await proc.WaitForExitAsync(ct).ConfigureAwait(false);
                 exitCode = proc.ExitCode;
             }
@@ -351,6 +352,38 @@ public sealed class InstallMonitorService
         await Task.Delay(2000, ct).ConfigureAwait(false);
 
         var log = await Task.Run(() => session.Finish(exitCode, progress, ct), ct).ConfigureAwait(false);
+        SaveLog(log);
+        return log;
+    }
+
+    /// <summary>
+    /// Records an installation that is <b>already running</b> (detected by <see cref="InstallerDetector"/>): snapshots now,
+    /// waits until the installer's process tree (and any msiexec it hands off to) has exited, then diffs and saves the log.
+    /// Changes made in the first seconds before detection are not captured – the log says so in its title suffix.
+    /// </summary>
+    public async Task<InstallLog> MonitorRunningInstallAsync(DetectedInstaller installer, ProcessTree tree, IProgress<ProgressReport>? progress, CancellationToken ct)
+    {
+        using var session = new Session(installer.ImagePath);
+        await Task.Run(() => session.Start(progress, ct), ct).ConfigureAwait(false);
+
+        progress?.Report(new ProgressReport($"Recording {installer.DisplayName} – waiting for the installer to finish…", 50));
+        var started = DateTime.UtcNow;
+        while (tree.IsAlive())
+        {
+            await Task.Delay(1000, ct).ConfigureAwait(false);
+            if (DateTime.UtcNow - started > TimeSpan.FromHours(2)) { Log.Warn("Recording stopped after 2 h – installer still running."); break; }
+        }
+        int? exitCode = null;
+        try { using var root = Process.GetProcessById(installer.ProcessId); exitCode = root.HasExited ? root.ExitCode : null; } catch { /* gone */ }
+
+        progress?.Report(new ProgressReport("Waiting for background installer processes…", 55));
+        var settleUntil = DateTime.UtcNow.AddSeconds(90);
+        while (DateTime.UtcNow < settleUntil && MsiRunning())
+            await Task.Delay(1500, ct).ConfigureAwait(false);
+        await Task.Delay(2000, ct).ConfigureAwait(false);
+
+        var log = await Task.Run(() => session.Finish(exitCode, progress, ct), ct).ConfigureAwait(false);
+        if (log.Title.Equals(Path.GetFileNameWithoutExtension(installer.ImagePath), StringComparison.OrdinalIgnoreCase)) log.Title = installer.DisplayName;
         SaveLog(log);
         return log;
     }

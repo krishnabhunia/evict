@@ -93,6 +93,40 @@
 
             <Border Style="{StaticResource Card}" Margin="0,0,0,14">
                 <StackPanel>
+                    <TextBlock Text="Notification area &amp; background" Style="{StaticResource Text.Section}" Margin="0,0,0,12" />
+                    <CheckBox Style="{StaticResource SettingRow}" IsChecked="{Binding ShowTrayIcon}" Content="Show the Evict icon in the notification area (system tray)" />
+                    <CheckBox Style="{StaticResource SettingRow}" IsChecked="{Binding CloseToTray}" Content="Closing the window keeps Evict running in the notification area" Margin="26,0,0,12" />
+                    <CheckBox Style="{StaticResource SettingRow}" IsChecked="{Binding MinimizeToTray}" Content="Minimizing hides the window to the notification area" Margin="26,0,0,12" />
+                    <CheckBox Style="{StaticResource SettingRow}" IsChecked="{Binding StartWithWindows}" Content="Start Evict with Windows (hidden in the notification area)" />
+                    <TextBlock Style="{StaticResource Hint}" Text="Adds an entry for your user account under Settings → Apps → Startup; no administrator needed." />
+                    <Border Style="{StaticResource Divider}" Margin="0,4,0,14" />
+                    <TextBlock Text="When a program installer starts" Style="{StaticResource Text.Body}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <ComboBox ItemsSource="{Binding InstallerDetectionOptions}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding InstallerDetection, Mode=TwoWay}" Width="420" HorizontalAlignment="Left" />
+                    <TextBlock Text="{Binding DetectionStatusText}" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Text="Evict recognises setup.exe / *install*.exe files, Windows Installer packages (msiexec /i) and the temporary stubs of common installer frameworks. Recording starts at detection, so the first second or two of an installation may not be captured." />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="Scheduled Software Health scan" Style="{StaticResource Text.Section}" Margin="0,0,0,12" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Run a scan" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <ComboBox ItemsSource="{Binding ScheduledScanOptions}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding ScheduledScan, Mode=TwoWay}" Width="150" />
+                        <TextBlock Text="on" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="10,0,10,0" Visibility="{Binding IsWeeklyScan, Converter={StaticResource BoolToVis}}" />
+                        <ComboBox ItemsSource="{Binding WeekdayOptions}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding ScheduledScanWeekday, Mode=TwoWay}" Width="140" Visibility="{Binding IsWeeklyScan, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Text="at" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="10,0,10,0" Visibility="{Binding IsScheduledScanOn, Converter={StaticResource BoolToVis}}" />
+                        <ComboBox ItemsSource="{Binding HourOptions}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding ScheduledScanHour, Mode=TwoWay}" Width="110" Visibility="{Binding IsScheduledScanOn, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding ScheduleStatusText}" Style="{StaticResource Text.Caption}" Margin="0,10,0,0" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Text="Uses Windows Task Scheduler for your user account (no administrator needed). If the PC is off at that time the scan runs at the next start of Evict instead." />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                <StackPanel>
                     <TextBlock Text="Updates" Style="{StaticResource Text.Section}" Margin="0,0,0,12" />
                     <CheckBox Style="{StaticResource SettingRow}" IsChecked="{Binding CheckForUpdates}" Content="Check for a new version on GitHub when Evict starts" />
                     <TextBlock Style="{StaticResource Hint}" Text="{Binding EditionText}" />

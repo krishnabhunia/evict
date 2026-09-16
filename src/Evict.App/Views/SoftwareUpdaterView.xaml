@@ -116,7 +116,12 @@
                 <Button Style="{StaticResource Button.Link}" Content="Select all" Command="{Binding SelectAllCommand}" />
                 <TextBlock Text="·" Margin="8,0" Foreground="{DynamicResource Brush.Text.Tertiary}" VerticalAlignment="Center" />
                 <Button Style="{StaticResource Button.Link}" Content="None" Command="{Binding SelectNoneCommand}" />
+                <TextBlock Text="·" Margin="8,0" Foreground="{DynamicResource Brush.Text.Tertiary}" VerticalAlignment="Center" />
+                <TextBlock Text="Run" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox ItemsSource="{Binding ParallelOptions}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding ParallelUpdates, Mode=TwoWay}" Width="130"
+                          IsEnabled="{Binding IsUpdating, Converter={StaticResource InvBool}}" ToolTip="How many updates run in parallel. Windows Installer (MSI) packages still install one at a time; Evict waits and retries those automatically." />
                 <Button Style="{StaticResource Button.Link}" Content="Cancel updates" Command="{Binding CancelUpdateCommand}" Margin="20,0,0,0" Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVis}}" />
+                <ProgressBar Value="{Binding OverallProgress, Mode=OneWay}" Maximum="100" Width="160" Height="6" Margin="14,0,0,0" VerticalAlignment="Center" Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVis}}" />
             </StackPanel>
             <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding UpdateSelectedCommand}" MinWidth="200" Padding="18,9">
                 <StackPanel Orientation="Horizontal">

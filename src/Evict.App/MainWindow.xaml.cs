@@ -26,13 +26,27 @@ public partial class MainWindow : Window
         // Text size / zoom: scale the body (not the title bar, whose caption height is fixed).
         ApplyScale(App.UiState.Scale);
         App.UiState.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(UiState.Scale)) ApplyScale(App.UiState.Scale); };
+        BodyScroll.SizeChanged += (_, _) => FitBody();
         PreviewKeyDown += OnPreviewKeyDown;
-        Closing += (_, _) =>
+        Closing += (_, e) =>
         {
             var cur = App.Services.Settings.Current;
             cur.WindowMaximized = WindowState == WindowState.Maximized;
             if (WindowState == WindowState.Normal) { cur.WindowWidth = Width; cur.WindowHeight = Height; }
             App.Services.Settings.Save();
+
+            if (!App.IsExiting && cur.CloseToTray && App.Background.HasTray)
+            {
+                e.Cancel = true;            // keep running in the notification area
+                Hide();
+                App.Background.OnHiddenToTray();
+                return;
+            }
+            App.Quit();                      // ShutdownMode is OnExplicitShutdown
+        };
+        StateChanged += (_, _) =>
+        {
+            if (WindowState == WindowState.Minimized && App.Services.Settings.Current.MinimizeToTray && App.Background.HasTray && OwnedWindows.Count == 0) Hide();
         };
         UpdateMaxRestoreGlyph();
     }
@@ -43,16 +57,40 @@ public partial class MainWindow : Window
         MaxRestoreButton.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximize";
     }
 
-    private void ApplyScale(double s) => Body.LayoutTransform = Math.Abs(s - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(s, s);
+    // The body keeps a minimum logical size (sidebar + a usable content column). At large text sizes that is
+    // bigger than the window, so BodyScroll shows scrollbars instead of squeezing the pages.
+    private const double BodyMinLogicalWidth = 760;   // sidebar 236 + a usable content column
+    private const double BodyMinLogicalHeight = 480;
+
+    private void ApplyScale(double s)
+    {
+        Body.LayoutTransform = Math.Abs(s - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(s, s);
+        FitBody();
+    }
+
+    private void FitBody()
+    {
+        var s = App.UiState.Scale;
+        double vw = BodyScroll.ViewportWidth, vh = BodyScroll.ViewportHeight;
+        if (vw <= 0 || vh <= 0) { vw = BodyScroll.ActualWidth; vh = BodyScroll.ActualHeight; }
+        if (vw <= 0 || vh <= 0) return;
+        Body.Width = Math.Max(BodyMinLogicalWidth, Math.Floor(vw / s));
+        Body.Height = Math.Max(BodyMinLogicalHeight, Math.Floor(vh / s));
+    }
+
+    private void OnBodyScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
+    {
+        if (e.ViewportWidthChange != 0 || e.ViewportHeightChange != 0) FitBody();
+    }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
         switch (e.Key)
         {
-            case Key.OemPlus or Key.Add: App.UiState.Step(+0.1); e.Handled = true; break;
-            case Key.OemMinus or Key.Subtract: App.UiState.Step(-0.1); e.Handled = true; break;
-            case Key.D0 or Key.NumPad0: App.UiState.Scale = 1.0; e.Handled = true; break;
+            case Key.OemPlus or Key.Add: App.UiState.Step(+1); e.Handled = true; break;
+            case Key.OemMinus or Key.Subtract: App.UiState.Step(-1); e.Handled = true; break;
+            case Key.D0 or Key.NumPad0: App.UiState.Reset(); e.Handled = true; break;
         }
     }
 

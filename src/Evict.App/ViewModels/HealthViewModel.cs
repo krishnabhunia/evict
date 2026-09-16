@@ -91,10 +91,28 @@ public sealed partial class HealthViewModel : ObservableObject, IActivatable
         if (!_scannedOnce && _services.Settings.Current.HealthAutoScan) _ = ScanAsync();
     }
 
+    private Task? _currentScan;
+
+    /// <summary>Runs a scan, or joins the one already in progress (so callers can await completion either way).</summary>
     [RelayCommand]
-    public async Task ScanAsync()
+    public Task ScanAsync()
     {
-        if (IsScanning) return;
+        if (_currentScan is { IsCompleted: false }) return _currentScan;
+        _currentScan = ScanCoreAsync();
+        return _currentScan;
+    }
+
+    /// <summary>One-line result for notifications: "Score 82/100 · 3 outdated programs · 2 leftovers".</summary>
+    public string NotificationSummary()
+    {
+        var parts = Tiles.Where(t => t.Weight > 0 && t.State == TileState.Attention).OrderByDescending(t => t.Penalty).Take(3)
+            .Select(t => $"{t.Count:N0} {t.Title.ToLowerInvariant()}");
+        var detail = string.Join(" · ", parts);
+        return $"Score {Score}/100 ({ScoreLabel})" + (detail.Length > 0 ? " · " + detail : " · nothing needs attention");
+    }
+
+    private async Task ScanCoreAsync()
+    {
         IsScanning = true;
         _scannedOnce = true;
         foreach (var t in Tiles) t.State = TileState.Busy;

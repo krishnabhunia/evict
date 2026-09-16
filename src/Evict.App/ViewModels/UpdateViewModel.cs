@@ -82,7 +82,7 @@ public sealed partial class UpdateViewModel : ObservableObject
             {
                 _services.Settings.Current.SkippedUpdateVersion = null;
                 _services.Settings.Save();
-                _ = Application.Current.Dispatcher.BeginInvoke(() => Application.Current.Shutdown());
+                _ = Application.Current.Dispatcher.BeginInvoke(App.Quit);
                 return;
             }
             Error = error;

@@ -47,6 +47,24 @@ public sealed partial class SoftwareUpdaterViewModel : ObservableObject, IActiva
     [ObservableProperty] private DateTime? _lastChecked;
 
     public string Summary => Items.Count == 0 ? (LastChecked is null ? "Not checked yet." : "Everything is up to date.") : $"{Items.Count} update(s) available";
+
+    /// <summary>How many updates run concurrently (setting). MSI-based installers still serialise themselves; winget retries those.</summary>
+    public IReadOnlyList<KeyValuePair<int, string>> ParallelOptions { get; } = new[]
+    {
+        new KeyValuePair<int, string>(1, "1 at a time"),
+        new KeyValuePair<int, string>(2, "2 at a time"),
+        new KeyValuePair<int, string>(3, "3 at a time"),
+        new KeyValuePair<int, string>(4, "4 at a time"),
+        new KeyValuePair<int, string>(6, "6 at a time"),
+    };
+    public int ParallelUpdates
+    {
+        get => Math.Clamp(_services.Settings.Current.ParallelUpdates, 1, 6);
+        set { _services.Settings.Current.ParallelUpdates = Math.Clamp(value, 1, 6); _services.Settings.Save(); OnPropertyChanged(); }
+    }
+    [ObservableProperty] private int _doneCount;
+    [ObservableProperty] private int _totalCount;
+    [ObservableProperty] private double _overallProgress;
     public string LastCheckedText => LastChecked is { } d ? "Last checked " + ProgramItemViewModel.Relative(d) : "";
 
     public void OnActivated()
@@ -110,32 +128,59 @@ public sealed partial class SoftwareUpdaterViewModel : ObservableObject, IActiva
         var targets = Items.Where(i => i.IsSelected).ToList();
         if (targets.Count == 0) return;
         _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
         IsUpdating = true;
         LogLines.Clear();
-        int ok = 0, fail = 0;
+        int ok = 0, fail = 0, started = 0;
+        TotalCount = targets.Count; DoneCount = 0; OverallProgress = 0;
+        int parallel = Math.Min(ParallelUpdates, targets.Count);
+        foreach (var t in targets) { t.Status = "Waiting…"; t.IsUpdating = false; }
+        StatusText = parallel > 1 ? $"Updating {targets.Count} programs, {parallel} at a time…" : $"Updating {targets.Count} program(s)…";
+        var ui = System.Windows.Application.Current.Dispatcher;
+        var gate = new SemaphoreSlim(parallel);
         try
         {
-            foreach (var t in targets)
+            var tasks = targets.Select(async t =>
             {
-                if (_cts.IsCancellationRequested) break;
-                StatusText = $"Updating {t.Name} ({ok + fail + 1}/{targets.Count})…";
-                t.IsUpdating = true;
-                t.Status = "Updating…";
-                var (success, msg) = await _services.Winget.UpgradeAsync(t.Package, _cts.Token, line =>
+                await gate.WaitAsync(ct);
+                try
                 {
-                    if (string.IsNullOrWhiteSpace(line)) return;
-                    var clean = line.Trim();
-                    if (clean.All(c => c is '-' or '\\' or '|' or '/' or ' ' or '█' or '▒')) return;
-                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => { LogLines.Add($"[{t.Name}] {clean}"); if (LogLines.Count > 400) LogLines.RemoveAt(0); });
-                });
-                t.IsUpdating = false;
-                t.Status = msg;
-                if (success) { ok++; t.IsSelected = false; } else fail++;
-            }
-            StatusText = $"Updated {ok} package(s)" + (fail > 0 ? $", {fail} failed." : ".");
+                    if (ct.IsCancellationRequested) { await ui.InvokeAsync(() => t.Status = "Cancelled."); return; }
+                    await ui.InvokeAsync(() =>
+                    {
+                        started++;
+                        t.IsUpdating = true;
+                        t.Status = "Updating…";
+                        StatusText = $"Updating… {DoneCount} of {TotalCount} done, {started - DoneCount} running";
+                    });
+                    var (success, msg) = await _services.Winget.UpgradeAsync(t.Package, ct, line =>
+                    {
+                        if (string.IsNullOrWhiteSpace(line)) return;
+                        var clean = line.Trim();
+                        if (clean.All(c => c is '-' or '\\' or '|' or '/' or ' ' or '█' or '▒')) return;
+                        ui.BeginInvoke(() => { LogLines.Add($"[{t.Name}] {clean}"); if (LogLines.Count > 600) LogLines.RemoveAt(0); });
+                    });
+                    await ui.InvokeAsync(() =>
+                    {
+                        t.IsUpdating = false;
+                        t.Status = msg;
+                        if (success) { ok++; t.IsSelected = false; } else fail++;
+                        DoneCount++;
+                        OverallProgress = 100.0 * DoneCount / Math.Max(1, TotalCount);
+                        StatusText = $"Updating… {DoneCount} of {TotalCount} done, {started - DoneCount} running";
+                    });
+                }
+                catch (OperationCanceledException) { await ui.InvokeAsync(() => { t.IsUpdating = false; t.Status = "Cancelled."; }); }
+                catch (Exception ex) { await ui.InvokeAsync(() => { t.IsUpdating = false; t.Status = "Failed: " + ex.Message; fail++; DoneCount++; }); }
+                finally { gate.Release(); }
+            }).ToList();
+            await Task.WhenAll(tasks);
+            StatusText = ct.IsCancellationRequested
+                ? $"Cancelled – {ok} updated, {fail} failed."
+                : $"Updated {ok} package(s)" + (fail > 0 ? $", {fail} failed." : ".");
         }
         catch (OperationCanceledException) { StatusText = "Cancelled."; }
-        finally { IsUpdating = false; }
+        finally { IsUpdating = false; foreach (var t in Items) t.IsUpdating = false; }
         if (ok > 0) await CheckAsync();
     }
 

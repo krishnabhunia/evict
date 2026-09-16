@@ -15,6 +15,10 @@ public sealed class ProcessResult
 /// <summary>Small helper around <see cref="Process"/> for captured, cancellable command execution.</summary>
 public static class ProcessRunner
 {
+    /// <summary>Raised with the PID of every process Evict starts through this class (installer detection ignores them).</summary>
+    public static event Action<int>? ProcessStarted;
+    public static void NotifyStarted(int pid) { try { ProcessStarted?.Invoke(pid); } catch { /* observers must not break callers */ } }
+
     public static async Task<ProcessResult> RunCapturedAsync(
         string fileName,
         string arguments,
@@ -51,6 +55,7 @@ public static class ProcessRunner
         };
 
         proc.Start();
+        NotifyStarted(proc.Id);
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
 

@@ -41,6 +41,10 @@ public sealed partial class InstallMonitorViewModel : ObservableObject, IActivat
 
     public ObservableCollection<InstallLogItemViewModel> Logs { get; } = new();
 
+    /// <summary>Tray-side automatic recording state (shown as a banner on this page).</summary>
+    public BackgroundCoordinator Background => _main.Background;
+    [RelayCommand] private void CancelRecording() => _main.Background.CancelRecording();
+
     [ObservableProperty] private bool _isMonitoring;
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private double _progress;

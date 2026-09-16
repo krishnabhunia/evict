@@ -23,4 +23,6 @@ public sealed class AppServices
     public ResidualScanner Residual { get; } = new();
     public IconProvider Icons { get; } = new();
     public UpdateService Updater { get; } = new();
+    public ScheduledScanService Scheduler { get; } = new();
+    public SystemCleanupService Cleanup { get; } = new();
 }

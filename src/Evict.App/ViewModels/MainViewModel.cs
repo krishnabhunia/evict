@@ -96,6 +96,24 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     public T GetPage<T>(PageKey key) where T : ObservableObject => (T)GetOrCreate(key);
+    public bool IsPageLoaded(PageKey key) => _pages.ContainsKey(key);
+
+    /// <summary>Tray icon, installer detection and notifications (set by App right after construction).</summary>
+    public BackgroundCoordinator Background { get; set; } = null!;
+
+    /// <summary>Shows and activates the main window (it may be hidden in the tray or minimized).</summary>
+    public void ShowMainWindow()
+    {
+        var w = Application.Current.MainWindow;
+        if (w is null) return;
+        if (!w.IsVisible) w.Show();
+        if (w.WindowState == WindowState.Minimized) w.WindowState = WindowState.Normal;
+        w.Activate();
+        w.Topmost = true; w.Topmost = false;
+    }
+
+    /// <summary>Quits for real (bypasses "close to tray").</summary>
+    public void ExitApplication() => App.Quit();
 
     public void SetBadge(PageKey key, int count)
     {
@@ -119,7 +137,8 @@ public sealed partial class MainViewModel : ObservableObject
         }
         if (o.Widget) ShowWidget();
         if (o.Updated) ShowUpdatedNotice = true;
-        if (o.Scan)
+        if (o.ScheduledScan) await RunScheduledScanAsync();
+        else if (o.Scan)
         {
             Navigate(PageKey.Health);
             await GetPage<HealthViewModel>(PageKey.Health).ScanAsync();
@@ -134,6 +153,52 @@ public sealed partial class MainViewModel : ObservableObject
             if (match != null) await programs.LaunchWizardForAsync(match);
             else Dialogs.Info($"No installed program matches \"{o.UninstallName}\".");
         }
+    }
+
+    /// <summary>
+    /// Task Scheduler entry point (--scheduled-scan): scan silently, notify, and – if this process exists only for the
+    /// scan – exit again after a while unless the user opened the window.
+    /// </summary>
+    public async Task RunScheduledScanAsync()
+    {
+        var health = GetPage<HealthViewModel>(PageKey.Health);
+        try
+        {
+            await health.ScanAsync();
+            _services.Settings.Current.LastScheduledScanUtc = DateTime.UtcNow;
+            _services.Settings.Save();
+            int issues = health.IssueCount;
+            var title = issues == 0 ? $"Software Health {health.Score}/100 – all good" : $"Software Health {health.Score}/100 – {issues} item(s) need attention";
+            Log.Info("Scheduled scan: " + health.NotificationSummary());
+            Background.Notify(title, health.NotificationSummary() + ". Click to open Evict.", () => { ShowMainWindow(); Navigate(PageKey.Health); }, warning: issues > 0);
+        }
+        catch (Exception ex) { Log.Error("Scheduled scan failed", ex); }
+
+        if (App.StartedHeadless && !_services.Settings.Current.StartWithWindows)
+        {
+            // Give the notification time to be seen/clicked, then leave quietly.
+            await Task.Delay(TimeSpan.FromSeconds(90));
+            var w = Application.Current.MainWindow;
+            if ((w == null || !w.IsVisible) && !Background.IsRecording) App.Quit();
+        }
+    }
+
+    /// <summary>If the PC was off when Task Scheduler wanted to run the scan, run it now (a while after start-up).</summary>
+    public async Task RunMissedScheduledScanIfDueAsync()
+    {
+        var s = _services.Settings.Current;
+        if (!ScheduledScanTask.IsValidMode(s.ScheduledScan) || s.ScheduledScan.Equals("Off", StringComparison.OrdinalIgnoreCase)) return;
+        if (s.LastScheduledScanUtc is null)
+        {
+            s.LastScheduledScanUtc = DateTime.UtcNow; // start the clock the first time the schedule is active
+            _services.Settings.Save();
+            return;
+        }
+        var period = s.ScheduledScan.Equals("Daily", StringComparison.OrdinalIgnoreCase) ? TimeSpan.FromDays(1) : TimeSpan.FromDays(7);
+        if (DateTime.UtcNow - s.LastScheduledScanUtc.Value < period + TimeSpan.FromHours(2)) return;
+        await Task.Delay(TimeSpan.FromSeconds(30));
+        Log.Info("Running the missed scheduled scan.");
+        await RunScheduledScanAsync();
     }
 
     /// <summary>Used by the Explorer context menu, drag & drop and the Easy Uninstall widget.</summary>
@@ -187,7 +252,7 @@ public sealed partial class MainViewModel : ObservableObject
         Program.ReleaseSingleInstance();
         if (ElevationHelper.RestartElevated())
         {
-            Application.Current.Shutdown();
+            App.Quit();
         }
         else
         {
@@ -249,6 +314,42 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand] private void DismissUpdateBanner() => ShowUpdateBanner = false;
+
+    // ───────────────────────────── installer detected (in-window prompt) ─────────────────────────────
+
+    [ObservableProperty] private DetectedInstaller? _pendingInstaller;
+    public bool ShowInstallerBanner => PendingInstaller != null;
+    public string InstallerBannerText => PendingInstaller is { } d ? $"Installer detected: {d.DisplayName} ({d.FileName}). Record everything it installs with Install Monitor?" : "";
+    partial void OnPendingInstallerChanged(DetectedInstaller? value) { OnPropertyChanged(nameof(ShowInstallerBanner)); OnPropertyChanged(nameof(InstallerBannerText)); }
+
+    [RelayCommand]
+    private void RecordPendingInstaller()
+    {
+        var d = PendingInstaller;
+        PendingInstaller = null;
+        if (d != null) _ = Background.RecordAsync(d);
+    }
+
+    [RelayCommand] private void DismissInstallerBanner() => PendingInstaller = null;
+
+    // ───────────────────────────── generic notice bar (used when there is no tray icon) ─────────────────────────────
+
+    [ObservableProperty] private string? _noticeText;
+    private Action? _noticeAction;
+    public bool HasNotice => NoticeText != null;
+    public bool NoticeHasAction => _noticeAction != null;
+    partial void OnNoticeTextChanged(string? value) { OnPropertyChanged(nameof(HasNotice)); OnPropertyChanged(nameof(NoticeHasAction)); }
+
+    public void ShowNotice(string text, Action? onClick)
+    {
+        _noticeAction = onClick;
+        NoticeText = text;
+        var w = Application.Current.MainWindow;
+        if (w is { IsVisible: false }) ShowMainWindow();
+    }
+
+    [RelayCommand] private void NoticeAction() { var a = _noticeAction; NoticeText = null; _noticeAction = null; a?.Invoke(); }
+    [RelayCommand] private void DismissNotice() { NoticeText = null; _noticeAction = null; }
     [RelayCommand] private void DismissUpdatedNotice() => ShowUpdatedNotice = false;
     [RelayCommand] private void OpenReleases() => Dialogs.OpenUrl(UpdateChecker.ReleasesUrl);
 

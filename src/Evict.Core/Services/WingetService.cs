@@ -123,9 +123,29 @@ public sealed class WingetService
         if (winget is null) return (false, "winget not found.");
         var args = $"upgrade --id \"{pkg.Id}\" --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity";
         if (!string.IsNullOrEmpty(pkg.Source)) args += $" --source {pkg.Source}";
-        var res = await ProcessRunner.RunCapturedAsync(winget, args, ct, TimeSpan.FromMinutes(30), onLine, Encoding.UTF8).ConfigureAwait(false);
-        var text = (res.StdOut + "\n" + res.StdErr);
-        bool ok = res.ExitCode == 0 || text.Contains("Successfully installed", StringComparison.OrdinalIgnoreCase);
-        return (ok, ok ? "Updated." : $"winget exited with code {res.ExitCode}: {FirstUseful(text)}");
+
+        // Several upgrades run at the same time; Windows Installer allows only one MSI at once (error 1618 /
+        // 0x80070652 "another installation is already in progress"), so such failures are retried with a pause.
+        for (int attempt = 1; ; attempt++)
+        {
+            var res = await ProcessRunner.RunCapturedAsync(winget, args, ct, TimeSpan.FromMinutes(30), onLine, Encoding.UTF8).ConfigureAwait(false);
+            var text = (res.StdOut + "\n" + res.StdErr);
+            bool ok = res.ExitCode == 0 || text.Contains("Successfully installed", StringComparison.OrdinalIgnoreCase);
+            if (ok) return (true, "Updated.");
+            if (IsInstallerBusy(res.ExitCode, text) && attempt < 6)
+            {
+                onLine?.Invoke($"Another installation is in progress – retrying in 20 s (attempt {attempt}/5)…");
+                await Task.Delay(TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
+                continue;
+            }
+            return (false, $"winget exited with code {res.ExitCode}: {FirstUseful(text)}");
+        }
     }
+
+    /// <summary>MSI "another installation is already in progress" – 1618 as a raw code or wrapped in an HRESULT (0x80070652).</summary>
+    public static bool IsInstallerBusy(int exitCode, string output)
+        => exitCode == 1618 || exitCode == unchecked((int)0x80070652)
+           || output.Contains("0x80070652", StringComparison.OrdinalIgnoreCase)
+           || output.Contains("another installation", StringComparison.OrdinalIgnoreCase)
+           || output.Contains("installation is already in progress", StringComparison.OrdinalIgnoreCase);
 }

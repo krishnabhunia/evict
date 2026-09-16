@@ -71,13 +71,15 @@ public sealed class LeftoverCleaner
 
     // ───────────────────────────── files ─────────────────────────────
 
-    public static string? DeletePath(string path, bool isDirectory, CleanupOptions options)
+    /// <param name="trustedRoot">The caller has already verified the path lies inside a folder it owns the cleanup of
+    /// (e.g. Windows\Temp) – skips the generic protected-folder refusal that guards uninstall leftovers.</param>
+    public static string? DeletePath(string path, bool isDirectory, CleanupOptions options, bool trustedRoot = false)
     {
         try
         {
             if (isDirectory ? !Directory.Exists(path) : !File.Exists(path)) return null; // already gone
 
-            if (PathUtil.IsProtectedRoot(path, checkProtectedNames: false) && isDirectory)
+            if (!trustedRoot && isDirectory && PathUtil.IsProtectedRoot(path, checkProtectedNames: false))
                 return "Refusing to delete a protected system folder.";
 
             if (options.SendToRecycleBin)

@@ -8,6 +8,8 @@ namespace Evict.Core.Util;
 ///   --widget                                            show the Easy Uninstall widget
 ///   --page programs|apps|extensions|updater|monitor|tools|history|settings|health
 ///   --updated                                           (internal) first start after a self-update – show the "updated" notice
+///   --tray                                              start hidden in the notification area (used by "Start with Windows")
+///   --scheduled-scan                                    run the Software Health scan in the background and notify (Task Scheduler)
 /// Pure logic – unit tested.
 /// </summary>
 public sealed class CommandLineOptions
@@ -18,14 +20,18 @@ public sealed class CommandLineOptions
     public bool Widget { get; init; }
     public string? Page { get; init; }
     public bool Updated { get; init; }
+    public bool Tray { get; init; }
+    public bool ScheduledScan { get; init; }
     public List<string> Unknown { get; } = new();
 
-    public bool IsEmpty => UninstallFile is null && UninstallName is null && !Scan && !Widget && Page is null && !Updated;
+    public bool IsEmpty => UninstallFile is null && UninstallName is null && !Scan && !Widget && Page is null && !Updated && !Tray && !ScheduledScan;
+    /// <summary>True when the process should start without showing the main window.</summary>
+    public bool Headless => Tray || ScheduledScan;
 
     public static CommandLineOptions Parse(IReadOnlyList<string> args)
     {
         string? file = null, name = null, page = null;
-        bool scan = false, widget = false, updated = false;
+        bool scan = false, widget = false, updated = false, tray = false, scheduled = false;
         var unknown = new List<string>();
 
         for (int i = 0; i < args.Count; i++)
@@ -43,6 +49,8 @@ public sealed class CommandLineOptions
                 case "widget" or "easy": widget = true; break;
                 case "page": page = Next()?.ToLowerInvariant(); break;
                 case "updated": updated = true; break;
+                case "tray" or "background" or "minimized": tray = true; break;
+                case "scheduled-scan" or "scheduledscan" or "background-scan": scheduled = true; break;
                 default:
                     // A bare path (drag & drop onto the exe, or "Open with") means --uninstall-file.
                     if (!a.StartsWith('-') && !a.StartsWith('/') && (a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || a.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)))
@@ -51,7 +59,7 @@ public sealed class CommandLineOptions
                     break;
             }
         }
-        var opts = new CommandLineOptions { UninstallFile = file, UninstallName = name, Scan = scan, Widget = widget, Page = page, Updated = updated };
+        var opts = new CommandLineOptions { UninstallFile = file, UninstallName = name, Scan = scan, Widget = widget, Page = page, Updated = updated, Tray = tray, ScheduledScan = scheduled };
         opts.Unknown.AddRange(unknown);
         return opts;
     }

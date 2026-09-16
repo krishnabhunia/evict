@@ -4,7 +4,7 @@
 
 #define MyAppName "Evict Uninstaller"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.2.0"
+  #define MyAppVersion "1.3.0"
 #endif
 #define MyAppPublisher "Krishna Bhunia"
 #define MyAppURL "https://github.com/krishnabhunia/evict"
@@ -52,6 +52,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "contextmenu"; Description: "Add ""Uninstall with Evict"" to the right-click menu of programs (.exe) and shortcuts"; GroupDescription: "Windows integration:"
 Name: "sendto"; Description: "Add Evict to the ""Send to"" menu"; GroupDescription: "Windows integration:"; Flags: unchecked
+Name: "autostart"; Description: "Start Evict with Windows (hidden in the notification area - detects installers automatically)"; GroupDescription: "Windows integration:"; Flags: unchecked
 
 [Files]
 Source: "{#SourceDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -66,6 +67,8 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Name: "{usersendto}\Uninstall with Evict"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--uninstall-file"; Tasks: sendto
 
 [Registry]
+; Optional autostart (per-user or all-users depending on the install mode); the app's own Settings toggle manages the same value.
+Root: HKA; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Evict"; ValueData: """{app}\{#MyAppExeName}"" --tray"; Tasks: autostart; Flags: uninsdeletevalue
 ; Marker the app uses to know it was installed by Setup (→ updates download the installer, not the raw exe).
 Root: HKA; Subkey: "Software\Evict"; ValueType: string; ValueName: "InstallDir"; ValueData: "{app}"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Evict"; ValueType: string; ValueName: "Version"; ValueData: "{#MyAppVersion}"
@@ -83,8 +86,10 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--updated"; Flags: nowait skipifnotsilent; Check: IsSelfUpdate
 
 [UninstallRun]
-; Make sure the widget / a second instance is not holding the exe.
+; Make sure the widget / tray instance is not holding the exe, and drop the scheduled scan + autostart entries.
 Filename: "{cmd}"; Parameters: "/C taskkill /IM {#MyAppExeName} /F"; Flags: runhidden; RunOnceId: "KillEvict"
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /F /TN ""Evict Software Health scan"""; Flags: runhidden; RunOnceId: "DelTask"
+Filename: "{cmd}"; Parameters: "/C reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v Evict /f"; Flags: runhidden; RunOnceId: "DelRun"
 
 [Code]
 // Offer to remove settings, history and install logs when uninstalling.

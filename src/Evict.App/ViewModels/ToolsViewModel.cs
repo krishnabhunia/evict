@@ -33,6 +33,7 @@ public sealed partial class ToolsViewModel : ObservableObject
             new() { Key = "force", Glyph = "", Title = "Force Uninstall", Description = "Remove a program whose uninstaller is broken or missing – pick it from the list or point at its folder." },
             new() { Key = "widget", Glyph = "", Title = "Easy Uninstall widget", Description = "A small floating target: drag it onto any program window (or drop a shortcut on it) to uninstall that program." },
             new() { Key = "residual", Glyph = "", Title = "Residual Cleaner", Description = "Find files, folders and registry keys left behind by programs that were uninstalled earlier – by any uninstaller." },
+            new() { Key = "cleanup", Glyph = "", Title = "System Cleanup", Description = "Orphaned Windows Installer packages, data of removed Store apps, update caches, temporary files, error reports and crash dumps – measured first, removed on your say-so.", RequiresAdmin = true },
             new() { Key = "startup", Glyph = "", Title = "Startup Apps", Description = "See everything that launches at sign-in; switch entries off or remove them." },
             new() { Key = "shred", Glyph = "", Title = "File Shredder", Description = "Permanently destroy files and folders by overwriting them so they cannot be recovered." },
             new() { Key = "updates", Glyph = "", Title = "Windows Updates", Description = "List installed Windows updates (KB…) and uninstall a problematic one.", RequiresAdmin = true },
@@ -68,6 +69,9 @@ public sealed partial class ToolsViewModel : ObservableObject
             case "residual":
                 OpenResidualCleaner();
                 break;
+            case "cleanup":
+                OpenSystemCleanup();
+                break;
             case "startup":
                 new StartupWindow { DataContext = new StartupViewModel(_services), Owner = System.Windows.Application.Current.MainWindow }.ShowDialog();
                 break;
@@ -90,6 +94,13 @@ public sealed partial class ToolsViewModel : ObservableObject
             case "storage": Dialogs.OpenUrl("ms-settings:storagesense"); break;
             case "logs": Dialogs.OpenFolder(AppPaths.DataRoot); break;
         }
+    }
+
+    public void OpenSystemCleanup()
+    {
+        var vm = new SystemCleanupViewModel(_services);
+        new SystemCleanupWindow { DataContext = vm, Owner = System.Windows.Application.Current.MainWindow }.ShowDialog();
+        if (vm.AnythingChanged) _main.GetPage<HistoryViewModel>(PageKey.History).Reload();
     }
 
     public void OpenResidualCleaner()

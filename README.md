@@ -1,6 +1,6 @@
 # Evict Uninstaller
 
-A complete Windows uninstaller in the spirit of IObit Uninstaller — written in C# / .NET 8 / WPF,
+A complete Windows uninstaller — written in C# / .NET 8 / WPF,
 delivered as a single portable `Evict.exe` **or** an `Evict-Setup-x.y.z.exe` installer (Inno Setup).
 
 | Module | What it does | Status |
@@ -12,7 +12,7 @@ delivered as a single portable `Evict.exe` **or** an `Evict-Setup-x.y.z.exe` ins
 | **Force Uninstall** | For broken/missing uninstallers: pick a program or point at a folder/exe, kill its processes, remove everything it owns | ✅ |
 | **Windows Apps** | Store / UWP / MSIX packages incl. pre-installed bloatware; remove per user or all users, de-provision | ✅ |
 | **Browser Extensions** | Chrome, Edge, Brave, Vivaldi, Opera (all profiles) + Firefox; flags broad permissions; removes with browser closed | ✅ |
-| **Software Updater** | Outdated programs via `winget upgrade`; one-click update with live output | ✅ |
+| **Software Updater** | Outdated programs via `winget upgrade`; one-click update with live output; **updates run in parallel** (1–6 at a time, MSI conflicts retried) | ✅ / Build 4 |
 | **Install Monitor** | Records files, folders and registry keys created by an installer (FileSystemWatcher + registry snapshot diff); later "Uninstall using this log" | ✅ |
 | **Tools** | File Shredder (1 / 3 / 7 passes), Windows Updates uninstall (wusa), Create Restore Point, shortcuts to Windows tools | ✅ |
 | **History** | Every operation with leftovers found/removed and bytes reclaimed; CSV export; rescan leftovers | ✅ |
@@ -23,10 +23,14 @@ delivered as a single portable `Evict.exe` **or** an `Evict-Setup-x.y.z.exe` ins
 | **Startup Apps** | Run/RunOnce keys + Startup folders with the Task-Manager enable/disable switch | ✅ Build 2 |
 | **Residual Cleaner** | Leftovers of programs uninstalled earlier: from History, broken entries, and unmatched folders (heuristic, review-only) | ✅ Build 2 |
 | **Known-bundleware list** | Name database on top of the timing heuristic; user-extensible via `%LocalAppData%\Evict\bundleware.json` | ✅ Build 2 |
-| **Text size / zoom**, dark-theme polish | 90–140 % (Ctrl + / − / 0); themed ComboBox, ScrollBar, TabControl, menus, RadioButton, Expander | ✅ Build 2 |
+| **Text size / zoom**, dark-theme polish | 80–300 %, default 120 % (Ctrl + / − / 0); the window scrolls at large sizes; themed ComboBox, ScrollBar, TabControl, menus, RadioButton, Expander | ✅ Build 2 / 4 |
 | **Installer** | `Evict-Setup-x.y.z.exe` (Inno Setup): per-user (no UAC) or all-users, Start-menu shortcuts, optional desktop icon / Explorer context menu / *Send to*, clean uninstall | ✅ Build 3 |
 | **Update check** | Start-up check against GitHub Releases (can be turned off); banner + dialog with release notes; verified download; installed copies run the new Setup silently, portable copies replace `Evict.exe` in place and restart | ✅ Build 3 |
 | **Code signing** | Optional Authenticode signing of both files in CI when a certificate secret is present | ✅ Build 3 |
+| **Notification-area icon** | Tray menu (open, scan, widget, record, exit); close/minimize to tray; start with Windows (`--tray`) | ✅ Build 4 |
+| **Installer detection → automatic Install Monitor** | Recognises installers as they start (file name, Inno/NSIS stubs, `msiexec /i`, descriptions); notification or fully automatic recording; waits for the whole process tree | ✅ Build 4 |
+| **Scheduled Health scan** | Daily / weekly Task Scheduler job (`--scheduled-scan`), result as a notification, missed runs caught up | ✅ Build 4 |
+| **System Cleanup** | Orphaned Windows Installer packages (backed up, not deleted), removed Store apps' data, update & Delivery Optimization caches, temp files, error reports, crash dumps, Windows.old | ✅ Build 4 |
 
 ## Running it
 
@@ -43,6 +47,14 @@ The first launch of an unsigned build shows Windows SmartScreen — *More info �
 
 Settings, history, install logs, downloaded updates and the diagnostic log live in `%LocalAppData%\Evict`.
 
+## Running in the background
+
+With the notification-area icon on (default), Evict can keep running after you close the window (*Settings → Notification
+area → Closing the window keeps Evict running*) or start hidden at sign-in (*Start Evict with Windows*, a per-user `Run`
+entry). While it runs it watches for new installer processes (WMI process-creation events, polling fallback) and either
+asks or automatically records the installation with Install Monitor. A daily/weekly Software Health scan can be scheduled
+through Task Scheduler (task `Evict Software Health scan`, per user); the result is a notification.
+
 ## Updates
 
 On start (Settings → *Updates*, on by default) Evict asks `api.github.com/repos/krishnabhunia/evict/releases/latest`
@@ -58,7 +70,7 @@ answers 404 and the status reads "no published release".
 Requirements: .NET 8 SDK (Windows, Linux or macOS — the project sets `EnableWindowsTargeting`).
 
 ```bash
-dotnet test tests/Evict.Core.Tests            # 157 unit tests for the pure logic
+dotnet test tests/Evict.Core.Tests            # 195 unit tests for the pure logic
 dotnet publish src/Evict.App -c Release -o publish   # → publish/Evict.exe (single file, win-x64)
 ```
 
@@ -73,6 +85,8 @@ Evict.exe --scan                                             # open Software Hea
 Evict.exe --widget                                           # show the Easy Uninstall widget
 Evict.exe --page tools                                       # health|programs|apps|extensions|updater|monitor|tools|history|settings
 Evict.exe --updated                                          # (internal) first start after a self-update
+Evict.exe --tray                                             # start hidden in the notification area (used by "Start with Windows")
+Evict.exe --scheduled-scan                                   # run the Health scan silently and notify (used by Task Scheduler)
 ```
 If Evict is already running, a second launch hands its arguments to the open window.
 
@@ -116,7 +130,8 @@ src/Evict.Core/              platform logic, no UI (net8.0, Windows-only APIs)
                              UninstallOrchestrator, RestorePointService, AppxService, BrowserExtensionService,
                              WingetService, WindowsUpdatesService, InstallMonitorService, ForceUninstallService,
                              FileShredder, UserAssistReader, BundlewareDetector, StartupService, ResidualScanner,
-                             UpdateService (GitHub Releases check, download, self-replace), SettingsStore, HistoryStore
+                             UpdateService (GitHub Releases check, download, self-replace), InstallerDetector,
+                             ScheduledScanService (schtasks), SystemCleanupService, SettingsStore, HistoryStore
   Util/                      NameNormalizer (matching heuristics), UninstallCommandParser, PathUtil, …
 src/Evict.App/               WPF UI (net8.0-windows), MVVM with CommunityToolkit.Mvvm
   Themes/                    Light.xaml / Dark.xaml brush sets (same keys)
