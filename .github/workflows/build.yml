@@ -42,6 +42,8 @@ jobs:
         run: dotnet test tests/Evict.Core.Tests/Evict.Core.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx"
 
       - name: XAML sanity checks
+        env:
+          PYTHONUTF8: "1"
         run: python build/xaml_check.py
 
       - name: Publish single-file EXE

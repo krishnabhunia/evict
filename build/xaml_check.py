@@ -30,8 +30,8 @@ for f in xaml_files:
             problems += 1
 
 # Theme parity
-light = set(re.findall(r'x:Key="([^"]+)"', (root / "Themes" / "Light.xaml").read_text()))
-dark = set(re.findall(r'x:Key="([^"]+)"', (root / "Themes" / "Dark.xaml").read_text()))
+light = set(re.findall(r'x:Key="([^"]+)"', (root / "Themes" / "Light.xaml").read_text(encoding="utf-8")))
+dark = set(re.findall(r'x:Key="([^"]+)"', (root / "Themes" / "Dark.xaml").read_text(encoding="utf-8")))
 for k in sorted(light ^ dark):
     print(f"[theme] key only in one theme: {k}")
     problems += 1
@@ -69,7 +69,7 @@ for f in xaml_files:
         for seg in roots:
             seg = re.sub(r'\[.*\]', '', seg)
             if seg and seg not in members:
-                print(f"[binding] {f.name}: '{path}' – segment '{seg}' not found on any view model")
+                print(f"[binding] {f.name}: '{path}' - segment '{seg}' not found on any view model")
                 problems += 1
                 break
 
