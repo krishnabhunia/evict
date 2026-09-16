@@ -1,0 +1,121 @@
+<UserControl x:Class="Evict.App.Views.InstallMonitorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Evict.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:InstallMonitorViewModel}"
+             AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
+
+    <Grid Margin="24,18,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Install Monitor" Style="{StaticResource Text.Title}" />
+                <TextBlock Style="{StaticResource Text.Subtitle}" Margin="0,4,0,0" Text="Records every file, folder and registry key an installer creates so the program can be removed completely later – even if its own uninstaller is poor. Drop an installer here or pick one." />
+            </StackPanel>
+            <Button Grid.Column="1" Style="{StaticResource Button.Primary}" Command="{Binding MonitorNewInstallCommand}" IsEnabled="{Binding IsMonitoring, Converter={StaticResource InvBool}}" Padding="14,8" VerticalAlignment="Top">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE7B3;" Style="{StaticResource Icon}" FontSize="14" Foreground="White" />
+                    <TextBlock Text="Monitor an installation…" Margin="8,0,0,0" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- Monitoring banner -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,14,0,0" Background="{DynamicResource Brush.Accent.Subtle}" BorderBrush="{DynamicResource Brush.Accent.Border}"
+                Visibility="{Binding IsMonitoring, Converter={StaticResource BoolToVis}}">
+            <StackPanel>
+                <TextBlock Text="Monitoring… complete the installer's wizard, then wait here." Style="{StaticResource Text.Section}" />
+                <TextBlock Text="{Binding StatusText}" Style="{StaticResource Text.Caption}" Margin="0,6,0,10" />
+                <ProgressBar Value="{Binding Progress}" Maximum="100" IsIndeterminate="{Binding ProgressIndeterminate}" />
+            </StackPanel>
+        </Border>
+        <TextBlock Grid.Row="1" Text="{Binding StatusText}" Style="{StaticResource Text.Caption}" Margin="0,12,0,0" Visibility="{Binding IsMonitoring, Converter={StaticResource InvBoolToVis}}" />
+
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Log list -->
+            <Border Style="{StaticResource Card}" Padding="0">
+                <Grid>
+                    <ListBox Style="{StaticResource ListBox.Flat}" ItemsSource="{Binding Logs}" SelectedItem="{Binding SelectedLog, Mode=TwoWay}" Margin="6">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:InstallLogItemViewModel}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Body}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="240" />
+                                        <Border Style="{StaticResource Pill}" Margin="8,0,0,0" Visibility="{Binding Uninstalled, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="Uninstalled" Style="{StaticResource Pill.Text}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,0">
+                                        <Run Text="{Binding DateText, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding SizeText, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding InstallerName, Mode=OneWay}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False" Margin="20" Visibility="{Binding HasLogs, Converter={StaticResource InvBoolToVis}}">
+                        <TextBlock Text="&#xE7B3;" Style="{StaticResource Icon}" FontSize="36" Foreground="{DynamicResource Brush.Text.Tertiary}" />
+                        <TextBlock Text="No monitored installs yet" Style="{StaticResource Text.Section}" HorizontalAlignment="Center" Margin="0,10,0,4" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                        <TextBlock Text="Click 'Monitor an installation…' and choose a setup file. Evict watches while it installs." Style="{StaticResource Text.Caption}" TextAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Details -->
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="14,0,0,0" Visibility="{Binding SelectedLog, Converter={StaticResource BoolToVis}}">
+                <Grid DataContext="{Binding SelectedLog}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Section}" />
+                        <TextBlock Text="{Binding Summary}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+                        <TextBlock Style="{StaticResource Text.Caption}" Margin="0,2,0,0">
+                            <Run Text="Installer:" /><Run Text="{Binding Log.InstallerPath, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding StatusText, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,12">
+                        <Button Style="{StaticResource Button.Danger}" Command="{Binding DataContext.UninstallWithLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"
+                                IsEnabled="{Binding Uninstalled, Converter={StaticResource InvBool}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE74D;" Style="{StaticResource Icon}" FontSize="14" Foreground="White" />
+                                <TextBlock Text="Uninstall using this log" Margin="8,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource Button.Secondary}" Content="Export…" Margin="8,0,0,0" Command="{Binding DataContext.ExportLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                        <Button Style="{StaticResource Button.Ghost}" Content="Delete log" Margin="8,0,0,0" Command="{Binding DataContext.DeleteLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                    </StackPanel>
+                    <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0" Padding="0,8,0,0">
+                        <TabItem Header="Files &amp; folders">
+                            <ListBox Style="{StaticResource ListBox.Flat}" ItemsSource="{Binding FileEntries}" FontFamily="{StaticResource Font.Mono}" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+                        </TabItem>
+                        <TabItem Header="Registry">
+                            <ListBox Style="{StaticResource ListBox.Flat}" ItemsSource="{Binding RegistryEntries}" FontFamily="{StaticResource Font.Mono}" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+                        </TabItem>
+                        <TabItem Header="Modified files">
+                            <ListBox Style="{StaticResource ListBox.Flat}" ItemsSource="{Binding ModifiedEntries}" FontFamily="{StaticResource Font.Mono}" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

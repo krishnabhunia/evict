@@ -1,0 +1,56 @@
+name: Build Evict
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore Evict.sln
+
+      - name: Unit tests
+        run: dotnet test tests/Evict.Core.Tests/Evict.Core.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx"
+
+      - name: XAML sanity checks
+        run: python build/xaml_check.py
+
+      - name: Publish single-file EXE
+        run: dotnet publish src/Evict.App/Evict.App.csproj -c Release -o publish
+
+      - name: Checksum
+        shell: pwsh
+        run: (Get-FileHash publish/Evict.exe -Algorithm SHA256).Hash | Out-File publish/Evict.exe.sha256 -Encoding ascii
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Evict-${{ github.sha }}
+          path: |
+            publish/Evict.exe
+            publish/Evict.exe.sha256
+
+      - name: GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            publish/Evict.exe
+            publish/Evict.exe.sha256
+          generate_release_notes: true

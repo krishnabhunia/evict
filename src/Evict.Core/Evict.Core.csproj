@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Evict.Core</RootNamespace>
+    <AssemblyName>Evict.Core</AssemblyName>
+    <!-- Every service in this library talks to Windows (registry, WMI, shell). Declaring the
+         supported platform here silences CA1416 while keeping the TFM cross-platform so the
+         pure-logic parts can be unit tested on Linux CI. -->
+    <SupportedOSPlatform>windows</SupportedOSPlatform>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Evict.Core.Tests" />
+  </ItemGroup>
+
+</Project>

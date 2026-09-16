@@ -1,0 +1,116 @@
+<Window x:Class="Evict.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Evict.App.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="{Binding WindowTitle}"
+        Width="1240" Height="800" MinWidth="960" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Brush.Window.Background}"
+        FontFamily="{StaticResource Font.Body}" FontSize="13"
+        TextElement.Foreground="{DynamicResource Brush.Text.Primary}"
+        TextOptions.TextFormattingMode="Display" UseLayoutRounding="True"
+        Icon="pack://application:,,,/Assets/app.ico">
+
+    <WindowChrome.WindowChrome>
+        <!-- A 1px glass edge at the bottom keeps the DWM drop shadow while we draw our own title bar. -->
+        <WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0,0,0,1" CornerRadius="0" UseAeroCaptionButtons="False" NonClientFrameEdges="None" />
+    </WindowChrome.WindowChrome>
+
+    <Grid Margin="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource MaxMargin}}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="236" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══ Title bar ═══ -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{DynamicResource Brush.TitleBar.Background}" BorderBrush="{DynamicResource Brush.Sidebar.Border}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="236" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                    <Image Source="pack://application:,,,/Assets/app-256.png" Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock Text="Evict" FontSize="16" FontWeight="Bold" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.Text.Primary}" />
+                    <TextBlock Text="Uninstaller" FontSize="16" FontWeight="Light" Margin="5,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="{Binding CurrentTitle}" VerticalAlignment="Center" Margin="24,0,0,0" FontSize="13" Foreground="{DynamicResource Brush.Text.Tertiary}" />
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Border Background="{DynamicResource Brush.Success.Subtle}" CornerRadius="10" Padding="8,2" Margin="0,0,10,0" VerticalAlignment="Center"
+                            Visibility="{Binding IsElevated, Converter={StaticResource BoolToVis}}" ToolTip="Evict is running with administrator rights">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7EF;" Style="{StaticResource Icon}" FontSize="11" Foreground="{DynamicResource Brush.Success}" />
+                            <TextBlock Text="Administrator" FontSize="11" FontWeight="SemiBold" Margin="5,0,0,0" Foreground="{DynamicResource Brush.Success}" />
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource Button.Caption}" Content="&#xE921;" Click="OnMinimize" ToolTip="Minimize" />
+                    <Button x:Name="MaxRestoreButton" Style="{StaticResource Button.Caption}" Content="&#xE922;" Click="OnMaximizeRestore" ToolTip="Maximize" />
+                    <Button Style="{StaticResource Button.Caption.Close}" Content="&#xE8BB;" Click="OnClose" ToolTip="Close" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ═══ Sidebar ═══ -->
+        <Border Grid.Row="1" Grid.Column="0" Background="{DynamicResource Brush.Sidebar.Background}" BorderBrush="{DynamicResource Brush.Sidebar.Border}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Bottom" Margin="10,8,10,14">
+                    <Border Style="{StaticResource Divider}" Margin="6,0,6,10" />
+                    <Button Style="{StaticResource Button.Secondary}" Command="{Binding RestartAsAdministratorCommand}" HorizontalAlignment="Stretch"
+                            Visibility="{Binding IsElevated, Converter={StaticResource InvBoolToVis}}" Margin="0,0,0,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7EF;" Style="{StaticResource Icon}" FontSize="14" Foreground="{DynamicResource Brush.Accent}" />
+                            <TextBlock Text="Restart as administrator" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="{Binding VersionText}" FontSize="11" Foreground="{DynamicResource Brush.Text.Tertiary}" HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding NavItems}" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:NavItemViewModel}">
+                                <RadioButton Style="{StaticResource Button.Nav}" GroupName="MainNav" Content="{Binding Title}"
+                                             IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- ═══ Content ═══ -->
+        <Grid Grid.Row="1" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Admin banner -->
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Warning.Subtle}" BorderBrush="{DynamicResource Brush.Divider}" BorderThickness="0,0,0,1" Padding="20,8"
+                    Visibility="{Binding ShowAdminBanner, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Button.Ghost}" Content="&#xE8BB;" FontFamily="{StaticResource Font.Icons}" FontSize="10" Padding="8,4"
+                            Command="{Binding DismissAdminBannerCommand}" ToolTip="Dismiss" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Button.Link}" Content="Restart as administrator" Command="{Binding RestartAsAdministratorCommand}" Margin="12,0" />
+                    <TextBlock Text="&#xE7BA;" Style="{StaticResource Icon}" Foreground="{DynamicResource Brush.Warning}" DockPanel.Dock="Left" Margin="0,0,10,0" />
+                    <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Text.Primary}"
+                               Text="Evict is running without administrator rights. Machine-wide programs, leftovers in Program Files, services and restore points need elevation." />
+                </DockPanel>
+            </Border>
+
+            <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Focusable="False" />
+        </Grid>
+    </Grid>
+</Window>
