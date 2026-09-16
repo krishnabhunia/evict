@@ -13,11 +13,14 @@ public static class ShellIntegration
 
     private static string ExePath => Environment.ProcessPath ?? "Evict.exe";
 
-    public static bool IsRegistered()
+    /// <summary>Registered for this user (Settings toggle) or for all users (Setup's "all users" mode).</summary>
+    public static bool IsRegistered() => IsRegisteredIn(Registry.CurrentUser) || IsRegisteredIn(Registry.LocalMachine);
+
+    private static bool IsRegisteredIn(RegistryKey root)
     {
         try
         {
-            using var k = Registry.CurrentUser.OpenSubKey($@"Software\Classes\exefile\shell\{Verb}\command");
+            using var k = root.OpenSubKey($@"Software\Classes\exefile\shell\{Verb}\command");
             return k?.GetValue("") is string;
         }
         catch { return false; }
@@ -60,6 +63,17 @@ public static class ShellIntegration
             {
                 using var shell = Registry.CurrentUser.OpenSubKey($@"Software\Classes\{cls}\shell", writable: true);
                 shell?.DeleteSubKeyTree(Verb, throwOnMissingSubKey: false);
+            }
+            if (IsRegisteredIn(Registry.LocalMachine))
+            {
+                // Written by Setup in "all users" mode – needs administrator rights to remove.
+                if (!Evict.Core.Services.ElevationHelper.IsElevated)
+                    return (false, "The menu entry was installed for all users by Setup. Restart Evict as administrator to remove it, or uninstall/reinstall Evict without the option.");
+                foreach (var cls in FileClasses)
+                {
+                    using var shell = Registry.LocalMachine.OpenSubKey($@"Software\Classes\{cls}\shell", writable: true);
+                    shell?.DeleteSubKeyTree(Verb, throwOnMissingSubKey: false);
+                }
             }
             return (true, null);
         }

@@ -7,3 +7,4 @@ publish/
 .idea/
 TestResults/
 *.evict-backup
+installer/Output/

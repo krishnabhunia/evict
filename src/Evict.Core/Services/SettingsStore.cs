@@ -28,6 +28,11 @@ public sealed class AppSettings
     public double WidgetLeft { get; set; } = -1;
     public double WidgetTop { get; set; } = -1;
     public bool HealthAutoScan { get; set; } = true;
+    /// <summary>Check GitHub Releases for a newer version at start-up.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+    public DateTime? LastUpdateCheckUtc { get; set; }
+    /// <summary>A version the user chose to skip ("v1.3.0"); the banner stays hidden for it.</summary>
+    public string? SkippedUpdateVersion { get; set; }
     public double WindowWidth { get; set; } = 1240;
     public double WindowHeight { get; set; } = 800;
     public bool WindowMaximized { get; set; } = false;

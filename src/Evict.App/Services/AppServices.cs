@@ -22,4 +22,5 @@ public sealed class AppServices
     public StartupService Startup { get; } = new();
     public ResidualScanner Residual { get; } = new();
     public IconProvider Icons { get; } = new();
+    public UpdateService Updater { get; } = new();
 }

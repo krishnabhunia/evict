@@ -9,9 +9,15 @@ namespace Evict.App.ViewModels;
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly AppServices _services;
+    private readonly MainViewModel _main;
     private AppSettings S => _services.Settings.Current;
 
-    public SettingsViewModel(AppServices services) => _services = services;
+    public SettingsViewModel(AppServices services, MainViewModel main)
+    {
+        _services = services;
+        _main = main;
+        UpdateStatusText = S.LastUpdateCheckUtc is { } t ? $"Last checked {t.ToLocalTime():g}." : "Not checked yet.";
+    }
 
     public bool IsDarkTheme
     {
@@ -28,7 +34,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public bool ExplorerContextMenu
     {
-        get => S.ExplorerContextMenu;
+        get => S.ExplorerContextMenu || ShellIntegration.IsRegistered(); // Setup may have registered it too
         set
         {
             var (ok, error) = value ? ShellIntegration.Register() : ShellIntegration.Unregister();
@@ -39,6 +45,41 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     public bool HealthAutoScan { get => S.HealthAutoScan; set { S.HealthAutoScan = value; Save(); OnPropertyChanged(); } }
+
+    // ───────────── updates ─────────────
+
+    public bool CheckForUpdates { get => S.CheckForUpdates; set { S.CheckForUpdates = value; Save(); OnPropertyChanged(); } }
+    [ObservableProperty] private string _updateStatusText = "";
+    [ObservableProperty] private bool _isCheckingForUpdates;
+    [ObservableProperty] private bool _updateAvailable;
+    public string EditionText => UpdateService.IsInstalledMode() ? "Installed with Setup (updates run the new installer)" : "Portable edition (updates replace Evict.exe in place)";
+    public string ReleasesUrl => UpdateChecker.ReleasesUrl;
+
+    [RelayCommand]
+    private async Task CheckForUpdatesNowAsync()
+    {
+        if (IsCheckingForUpdates) return;
+        IsCheckingForUpdates = true;
+        UpdateStatusText = "Checking GitHub Releases…";
+        try
+        {
+            var result = await _services.Updater.CheckAsync(CancellationToken.None);
+            S.LastUpdateCheckUtc = DateTime.UtcNow;
+            Save();
+            UpdateStatusText = result.Message;
+            UpdateAvailable = result.Status == UpdateStatus.UpdateAvailable;
+            if (UpdateAvailable && result.Release != null)
+            {
+                S.SkippedUpdateVersion = null; // the user asked explicitly – show it even if skipped before
+                _main.OfferUpdate(result.Release, fromUser: true);
+            }
+        }
+        catch (Exception ex) { UpdateStatusText = "Update check failed: " + ex.Message; }
+        finally { IsCheckingForUpdates = false; }
+    }
+
+    [RelayCommand] private void ShowUpdate() => _main.ShowUpdateCommand.Execute(null);
+    [RelayCommand] private void OpenReleases() => Dialogs.OpenUrl(UpdateChecker.ReleasesUrl);
     public bool CreateRestorePoint { get => S.CreateRestorePoint; set { S.CreateRestorePoint = value; Save(); OnPropertyChanged(); } }
     public bool QuietUninstall { get => S.QuietUninstall; set { S.QuietUninstall = value; Save(); OnPropertyChanged(); } }
     public bool AutoCleanLeftovers { get => S.AutoCleanLeftovers; set { S.AutoCleanLeftovers = value; Save(); OnPropertyChanged(); } }

@@ -88,7 +88,7 @@ public sealed partial class MainViewModel : ObservableObject
             PageKey.InstallMonitor => new InstallMonitorViewModel(_services, this),
             PageKey.Tools => new ToolsViewModel(_services, this),
             PageKey.History => new HistoryViewModel(_services, this),
-            PageKey.Settings => new SettingsViewModel(_services),
+            PageKey.Settings => new SettingsViewModel(_services, this),
             _ => throw new ArgumentOutOfRangeException(nameof(key)),
         };
         _pages[key] = vm;
@@ -118,6 +118,7 @@ public sealed partial class MainViewModel : ObservableObject
             Navigate(key);
         }
         if (o.Widget) ShowWidget();
+        if (o.Updated) ShowUpdatedNotice = true;
         if (o.Scan)
         {
             Navigate(PageKey.Health);
@@ -200,6 +201,56 @@ public sealed partial class MainViewModel : ObservableObject
         _adminBannerDismissed = true;
         OnPropertyChanged(nameof(ShowAdminBanner));
     }
+
+    // ───────────────────────────── updates ─────────────────────────────
+
+    /// <summary>Latest release found by the start-up check (or Settings → Check now); drives the blue banner.</summary>
+    [ObservableProperty] private ReleaseInfo? _availableUpdate;
+    [ObservableProperty] private bool _showUpdateBanner;
+    [ObservableProperty] private string? _updateBannerText;
+    /// <summary>Green "Evict was updated" notice shown once after a self-update (--updated).</summary>
+    [ObservableProperty] private bool _showUpdatedNotice;
+    public string UpdatedNoticeText => $"Evict was updated to version {_services.Updater.CurrentVersion.ToString(3)}.";
+
+    /// <summary>Runs shortly after the window is shown; silent on every failure.</summary>
+    public async Task CheckForUpdatesOnStartupAsync()
+    {
+        var s = _services.Settings.Current;
+        if (!s.CheckForUpdates) return;
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(4)); // let the first page load first
+            var result = await _services.Updater.CheckAsync(CancellationToken.None);
+            s.LastUpdateCheckUtc = DateTime.UtcNow;
+            _services.Settings.Save();
+            Log.Info("Update check: " + result.Message);
+            if (result.Status == UpdateStatus.UpdateAvailable && result.Release != null) OfferUpdate(result.Release, fromUser: false);
+        }
+        catch (Exception ex) { Log.Warn("Start-up update check failed: " + ex.Message); }
+    }
+
+    /// <summary>Shows the banner (start-up) or the dialog directly (user clicked "Check now").</summary>
+    public void OfferUpdate(ReleaseInfo release, bool fromUser)
+    {
+        AvailableUpdate = release;
+        var skipped = string.Equals(_services.Settings.Current.SkippedUpdateVersion, release.TagName, StringComparison.OrdinalIgnoreCase);
+        UpdateBannerText = $"Evict {release.Version.ToString(3)} is available (you have {_services.Updater.CurrentVersion.ToString(3)}).";
+        if (fromUser) ShowUpdate();
+        else ShowUpdateBanner = !skipped;
+    }
+
+    [RelayCommand]
+    private void ShowUpdate()
+    {
+        if (AvailableUpdate is null) return;
+        var vm = new UpdateViewModel(_services, AvailableUpdate);
+        new UpdateWindow { DataContext = vm, Owner = Application.Current.MainWindow }.ShowDialog();
+        if (string.Equals(_services.Settings.Current.SkippedUpdateVersion, AvailableUpdate.TagName, StringComparison.OrdinalIgnoreCase)) ShowUpdateBanner = false;
+    }
+
+    [RelayCommand] private void DismissUpdateBanner() => ShowUpdateBanner = false;
+    [RelayCommand] private void DismissUpdatedNotice() => ShowUpdatedNotice = false;
+    [RelayCommand] private void OpenReleases() => Dialogs.OpenUrl(UpdateChecker.ReleasesUrl);
 
     [RelayCommand]
     private void OpenLogFolder() => Dialogs.OpenFolder(AppPaths.DataRoot);

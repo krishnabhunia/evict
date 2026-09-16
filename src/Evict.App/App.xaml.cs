@@ -47,6 +47,10 @@ public partial class App : Application
         SingleInstance.StartServer(args => HandleArgs(mainVm, args));
         if (Program.StartupArgs.Length > 0) HandleArgs(mainVm, Program.StartupArgs);
         else if (Services.Settings.Current.EasyUninstallWidgetVisible) mainVm.ShowWidgetCommand.Execute(null);
+
+        // Housekeeping after a self-update, then the (optional) update check in the background.
+        Services.Updater.CleanupAfterUpdate();
+        _ = mainVm.CheckForUpdatesOnStartupAsync();
     }
 
     private static void HandleArgs(MainViewModel vm, string[] args)
