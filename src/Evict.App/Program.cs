@@ -1,18 +1,21 @@
 using System.Threading;
+using Evict.App.Services;
 
 namespace Evict.App;
 
 /// <summary>
 /// Explicit entry point so we control the single-instance mutex and STA thread before WPF starts.
-/// (Using StartupObject also avoids the auto-generated Main clashing when building cross-platform.)
+/// A second launch (Explorer context menu, command line) forwards its arguments to the running window.
 /// </summary>
 public static class Program
 {
     private static Mutex? _mutex;
+    public static string[] StartupArgs { get; private set; } = Array.Empty<string>();
 
     [STAThread]
     public static int Main(string[] args)
     {
+        StartupArgs = args;
         bool createdNew;
         try
         {
@@ -25,7 +28,8 @@ public static class Program
 
         if (!createdNew)
         {
-            // Another instance is running (possibly elevated). Let it be.
+            // Another instance is running: hand over the arguments (or just ask it to come to the front).
+            SingleInstance.TryForward(args);
             return 0;
         }
 
@@ -39,6 +43,7 @@ public static class Program
     /// <summary>Called before re-launching elevated so the new process is not rejected as a duplicate.</summary>
     public static void ReleaseSingleInstance()
     {
+        SingleInstance.Stop();
         try { _mutex?.ReleaseMutex(); } catch { /* not owned */ }
         try { _mutex?.Dispose(); } catch { /* ignore */ }
         _mutex = null;

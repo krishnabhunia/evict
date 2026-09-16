@@ -8,6 +8,7 @@ public partial class FileShredderWindow : Window
     public FileShredderWindow()
     {
         InitializeComponent();
+        App.UiState.ApplyToDialog(this);
         DataContextChanged += (_, e) =>
         {
             if (e.OldValue is FileShredderViewModel old) old.RequestClose -= Close;

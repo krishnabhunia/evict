@@ -9,6 +9,7 @@ public partial class UninstallWizardWindow : Window
     public UninstallWizardWindow()
     {
         InitializeComponent();
+        App.UiState.ApplyToDialog(this);
         DataContextChanged += (_, e) =>
         {
             if (e.OldValue is UninstallWizardViewModel old) old.RequestClose -= Close;

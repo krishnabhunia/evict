@@ -18,6 +18,27 @@ public sealed partial class SettingsViewModel : ObservableObject
         get => S.Theme == "Dark";
         set { S.Theme = value ? "Dark" : "Light"; App.ApplyTheme(S.Theme); Save(); OnPropertyChanged(); }
     }
+
+    public IReadOnlyList<KeyValuePair<double, string>> TextSizeOptions => UiState.TextSizeOptions;
+    public double TextSize
+    {
+        get => UiState.TextSizeOptions.Select(o => o.Key).OrderBy(k => Math.Abs(k - App.UiState.Scale)).First();
+        set { App.UiState.Scale = UiState.Clamp(value); OnPropertyChanged(); }
+    }
+
+    public bool ExplorerContextMenu
+    {
+        get => S.ExplorerContextMenu;
+        set
+        {
+            var (ok, error) = value ? ShellIntegration.Register() : ShellIntegration.Unregister();
+            if (ok) { S.ExplorerContextMenu = value; Save(); }
+            else Dialogs.Error("Could not update the Explorer context menu: " + error);
+            OnPropertyChanged();
+        }
+    }
+
+    public bool HealthAutoScan { get => S.HealthAutoScan; set { S.HealthAutoScan = value; Save(); OnPropertyChanged(); } }
     public bool CreateRestorePoint { get => S.CreateRestorePoint; set { S.CreateRestorePoint = value; Save(); OnPropertyChanged(); } }
     public bool QuietUninstall { get => S.QuietUninstall; set { S.QuietUninstall = value; Save(); OnPropertyChanged(); } }
     public bool AutoCleanLeftovers { get => S.AutoCleanLeftovers; set { S.AutoCleanLeftovers = value; Save(); OnPropertyChanged(); } }

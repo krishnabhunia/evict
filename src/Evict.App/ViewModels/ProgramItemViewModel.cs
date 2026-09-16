@@ -47,6 +47,7 @@ public sealed partial class ProgramItemViewModel : ObservableObject
     public string InstallLocationText => Program.InstallLocation ?? "—";
     public string UninstallStringText => Program.UninstallString ?? Program.QuietUninstallString ?? "—";
     public bool IsBundleSuspect => Program.IsBundleSuspect;
+    public bool IsKnownBundleware => Program.IsKnownBundleware;
     public bool IsBroken => Program.IsBrokenEntry;
     public bool HasUninstaller => Program.HasUninstaller;
     public string? BundleNote => Program.BundleGroupNote;
@@ -75,6 +76,7 @@ public sealed partial class ProgramItemViewModel : ObservableObject
         OnPropertyChanged(nameof(SizeSort));
         OnPropertyChanged(nameof(LastUsedText));
         OnPropertyChanged(nameof(IsBundleSuspect));
+        OnPropertyChanged(nameof(IsKnownBundleware));
         OnPropertyChanged(nameof(StatusGlyph));
         OnPropertyChanged(nameof(StatusTooltip));
     }

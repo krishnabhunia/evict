@@ -37,6 +37,7 @@ public sealed class InstalledProgramsService
 
         progress?.Report(new ProgressReport("Detecting bundled software…", 45));
         BundlewareDetector.Apply(list);
+        KnownBundleware.Apply(list);
 
         if (options.MeasureMissingSizes)
         {

@@ -1,0 +1,55 @@
+<Window x:Class="Evict.App.Views.EasyUninstallWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Easy Uninstall" Width="176" Height="196"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False"
+        FontFamily="{StaticResource Font.Body}" FontSize="12" UseLayoutRounding="True"
+        AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
+
+    <Border x:Name="Card" Background="{DynamicResource Brush.Card.Background}" BorderBrush="{DynamicResource Brush.Card.Border}" BorderThickness="1" CornerRadius="14" Margin="8">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.25" />
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- header: drag handle + close -->
+            <Grid x:Name="Header" Background="Transparent" Cursor="SizeAll" MouseLeftButtonDown="OnHeaderMouseDown" Margin="10,8,6,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="pack://application:,,,/Assets/app-256.png" Width="14" Height="14" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock Text="Easy Uninstall" FontWeight="SemiBold" Margin="6,0,0,0" Foreground="{DynamicResource Brush.Text.Primary}" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource Button.Ghost}" Content="&#xE8BB;" FontFamily="{StaticResource Font.Icons}" FontSize="9" Padding="6,4" MinHeight="0" Click="OnClose" ToolTip="Hide widget" />
+            </Grid>
+
+            <!-- target -->
+            <Grid Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,4,0,0">
+                <Ellipse x:Name="Halo" Width="84" Height="84" Fill="{DynamicResource Brush.Accent.Subtle}" />
+                <Grid x:Name="Target" Width="64" Height="64" Cursor="Cross" Background="Transparent" ToolTip="Drag me and drop onto the window of the program you want to remove"
+                      MouseLeftButtonDown="OnTargetMouseDown" MouseMove="OnTargetMouseMove" MouseLeftButtonUp="OnTargetMouseUp">
+                    <Ellipse Stroke="{DynamicResource Brush.Accent}" StrokeThickness="3" Fill="{DynamicResource Brush.Card.Background}" />
+                    <Ellipse Width="34" Height="34" Stroke="{DynamicResource Brush.Accent}" StrokeThickness="2.5" />
+                    <Ellipse Width="10" Height="10" Fill="{DynamicResource Brush.Danger}" />
+                    <Rectangle Width="2.5" Height="16" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Top" />
+                    <Rectangle Width="2.5" Height="16" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Bottom" />
+                    <Rectangle Width="16" Height="2.5" Fill="{DynamicResource Brush.Accent}" HorizontalAlignment="Left" />
+                    <Rectangle Width="16" Height="2.5" Fill="{DynamicResource Brush.Accent}" HorizontalAlignment="Right" />
+                </Grid>
+            </Grid>
+
+            <StackPanel Grid.Row="2" Margin="10,0,10,10">
+                <TextBlock x:Name="Hint" Text="Drag the target onto a program's window" TextAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Text.Secondary}" FontSize="11" />
+                <TextBlock Text="or drop a shortcut / .exe here" TextAlignment="Center" Foreground="{DynamicResource Brush.Text.Tertiary}" FontSize="10.5" Margin="0,2,0,0" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

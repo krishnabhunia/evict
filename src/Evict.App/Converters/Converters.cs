@@ -113,6 +113,38 @@ public sealed class BoolToBrushConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
+/// <summary>Health score (0–100) → arc geometry inside a 120×120 box with an 11px stroke (used by the score ring).</summary>
+public sealed class ScoreArcConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        int score = value is int i ? i : 0;
+        if (score <= 0) return Geometry.Empty;
+        double fraction = Math.Min(0.9999, score / 100.0);
+        const double cx = 60, cy = 60, r = 54.5;
+        double angle = fraction * 2 * Math.PI;
+        double sx = cx, sy = cy - r;
+        double ex = cx + r * Math.Sin(angle), ey = cy - r * Math.Cos(angle);
+        int large = fraction > 0.5 ? 1 : 0;
+        var inv = CultureInfo.InvariantCulture;
+        var data = string.Format(inv, "M {0},{1} A {2},{2} 0 {3} 1 {4},{5}", sx, sy, r, large, ex, ey);
+        return Geometry.Parse(data);
+    }
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
+/// <summary>Health score → colour: green ≥ 75, amber ≥ 55, red below.</summary>
+public sealed class ScoreBrushConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        int score = value is int i ? i : -1;
+        var key = score < 0 ? "Brush.Text.Tertiary" : score >= 75 ? "Brush.Success" : score >= 55 ? "Brush.Warning" : "Brush.Danger";
+        return Application.Current.TryFindResource(key) as Brush ?? Brushes.Gray;
+    }
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
 /// <summary>Multiplies a double by the parameter (used for proportional widths).</summary>
 public sealed class MultiplyConverter : IValueConverter
 {

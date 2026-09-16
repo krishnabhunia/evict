@@ -55,6 +55,14 @@
                 <ToggleButton Style="{StaticResource Button.Chip}" IsChecked="{Binding ShowDetails}" Margin="8,0,0,0" MinHeight="34" ToolTip="Show / hide the details panel">
                     <TextBlock Text="&#xE8A0;" Style="{StaticResource Icon}" FontSize="14" Foreground="{Binding RelativeSource={RelativeSource AncestorType=ToggleButton}, Path=Foreground}" />
                 </ToggleButton>
+                <ToggleButton Style="{StaticResource Button.Chip}" Margin="8,0,0,0" MinHeight="34" ToolTip="Easy Uninstall widget: drag a target onto any program window"
+                              IsChecked="{Binding DataContext.IsWidgetVisible, RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"
+                              Command="{Binding DataContext.ToggleWidgetCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE81D;" Style="{StaticResource Icon}" FontSize="14" Foreground="{Binding RelativeSource={RelativeSource AncestorType=ToggleButton}, Path=Foreground}" />
+                        <TextBlock Text="Easy Uninstall" Margin="6,0,0,0" />
+                    </StackPanel>
+                </ToggleButton>
             </StackPanel>
         </Grid>
 

@@ -21,6 +21,13 @@ public sealed class AppSettings
     public bool HideFrameworkAppx { get; set; } = true;
     public bool ShowSystemAppx { get; set; } = false;
     public string ShredMethod { get; set; } = "Dod3Pass";
+    /// <summary>UI zoom / text size factor (0.9 – 1.4).</summary>
+    public double UiScale { get; set; } = 1.0;
+    public bool ExplorerContextMenu { get; set; } = false;
+    public bool EasyUninstallWidgetVisible { get; set; } = false;
+    public double WidgetLeft { get; set; } = -1;
+    public double WidgetTop { get; set; } = -1;
+    public bool HealthAutoScan { get; set; } = true;
     public double WindowWidth { get; set; } = 1240;
     public double WindowHeight { get; set; } = 800;
     public bool WindowMaximized { get; set; } = false;

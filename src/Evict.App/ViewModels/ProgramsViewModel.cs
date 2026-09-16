@@ -19,6 +19,25 @@ public sealed partial class ProgramsViewModel : ObservableObject, IActivatable
     private readonly MainViewModel _main;
     private CancellationTokenSource? _loadCts;
     private bool _loadedOnce;
+    private readonly TaskCompletionSource _firstLoad = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource _fullLoad = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Completes once the program list has been populated at least once (starts a load if needed).</summary>
+    public async Task EnsureLoadedAsync()
+    {
+        if (!_loadedOnce && !IsBusy) _ = RefreshAsync();
+        await _firstLoad.Task;
+    }
+
+    /// <summary>Completes when sizes, usage data and bundleware flags have been merged in (starts a load if needed).</summary>
+    public async Task EnsureFullyLoadedAsync()
+    {
+        if (!_loadedOnce && !IsBusy) _ = RefreshAsync();
+        await _fullLoad.Task;
+    }
+
+    /// <summary>Opens the uninstall wizard for one program (used by the widget, context menu and command line).</summary>
+    public Task LaunchWizardForAsync(InstalledProgram program) => RunUninstallAsync(new List<InstalledProgram> { program });
 
     public ProgramsViewModel(AppServices services, MainViewModel main)
     {
@@ -111,6 +130,7 @@ public sealed partial class ProgramsViewModel : ObservableObject, IActivatable
     {
         _loadCts?.Cancel();
         var cts = _loadCts = new CancellationTokenSource();
+        if (_fullLoad.Task.IsCompleted) _fullLoad = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         IsBusy = true;
         ProgressIndeterminate = true;
         StatusText = "Loading programs…";
@@ -134,18 +154,22 @@ public sealed partial class ProgramsViewModel : ObservableObject, IActivatable
             if (cts.IsCancellationRequested) return;
             Populate(quick);
             _loadedOnce = true;
+            _firstLoad.TrySetResult();
 
             // Phase 2: sizes + usage + bundleware, then refresh computed columns in place.
             var full = await _services.Programs.GetProgramsAsync(opts, progress, cts.Token);
             if (cts.IsCancellationRequested) return;
             MergeEnriched(full);
             StatusText = "";
+            _fullLoad.TrySetResult();
         }
         catch (OperationCanceledException) { /* superseded */ }
         catch (Exception ex)
         {
             StatusText = "Failed to load programs: " + ex.Message;
             Log.Error("Programs load failed", ex);
+            _firstLoad.TrySetResult();
+            _fullLoad.TrySetResult();
         }
         finally
         {
@@ -181,6 +205,7 @@ public sealed partial class ProgramsViewModel : ObservableObject, IActivatable
                 item.Program.LastUsed = e.LastUsed;
                 item.Program.RunCount = e.RunCount;
                 item.Program.IsBundleSuspect = e.IsBundleSuspect;
+                item.Program.IsKnownBundleware = e.IsKnownBundleware;
                 item.Program.BundleGroupNote = e.BundleGroupNote;
                 item.RefreshComputed();
             }

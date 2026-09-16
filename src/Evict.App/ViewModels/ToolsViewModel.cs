@@ -31,11 +31,13 @@ public sealed partial class ToolsViewModel : ObservableObject
         Tools = new ObservableCollection<ToolCardViewModel>
         {
             new() { Key = "force", Glyph = "", Title = "Force Uninstall", Description = "Remove a program whose uninstaller is broken or missing – pick it from the list or point at its folder." },
+            new() { Key = "widget", Glyph = "", Title = "Easy Uninstall widget", Description = "A small floating target: drag it onto any program window (or drop a shortcut on it) to uninstall that program." },
+            new() { Key = "residual", Glyph = "", Title = "Residual Cleaner", Description = "Find files, folders and registry keys left behind by programs that were uninstalled earlier – by any uninstaller." },
+            new() { Key = "startup", Glyph = "", Title = "Startup Apps", Description = "See everything that launches at sign-in; switch entries off or remove them." },
             new() { Key = "shred", Glyph = "", Title = "File Shredder", Description = "Permanently destroy files and folders by overwriting them so they cannot be recovered." },
             new() { Key = "updates", Glyph = "", Title = "Windows Updates", Description = "List installed Windows updates (KB…) and uninstall a problematic one.", RequiresAdmin = true },
             new() { Key = "restore", Glyph = "", Title = "Create Restore Point", Description = "Create a System Restore point right now, before you make risky changes.", RequiresAdmin = true },
             new() { Key = "appwiz", Glyph = "", Title = "Programs and Features", Description = "Open the classic Windows Control Panel uninstall list." },
-            new() { Key = "startup", Glyph = "", Title = "Startup Apps", Description = "Open Windows' Startup Apps settings to disable programs that launch at sign-in." },
             new() { Key = "storage", Glyph = "", Title = "Storage Settings", Description = "Open Windows Storage settings to see what is filling the disk." },
             new() { Key = "logs", Glyph = "", Title = "Evict Data Folder", Description = "Open the folder with settings, history, install logs and the diagnostic log." },
         };
@@ -60,6 +62,15 @@ public sealed partial class ToolsViewModel : ObservableObject
                 if (vm.AnythingChanged) _main.GetPage<HistoryViewModel>(PageKey.History).Reload();
                 break;
             }
+            case "widget":
+                _main.ShowWidgetCommand.Execute(null);
+                break;
+            case "residual":
+                OpenResidualCleaner();
+                break;
+            case "startup":
+                new StartupWindow { DataContext = new StartupViewModel(_services), Owner = System.Windows.Application.Current.MainWindow }.ShowDialog();
+                break;
             case "shred":
                 new FileShredderWindow { DataContext = new FileShredderViewModel(_services), Owner = System.Windows.Application.Current.MainWindow }.ShowDialog();
                 break;
@@ -76,9 +87,20 @@ public sealed partial class ToolsViewModel : ObservableObject
                 break;
             }
             case "appwiz": Start("control.exe", "appwiz.cpl"); break;
-            case "startup": Dialogs.OpenUrl("ms-settings:startupapps"); break;
             case "storage": Dialogs.OpenUrl("ms-settings:storagesense"); break;
             case "logs": Dialogs.OpenFolder(AppPaths.DataRoot); break;
+        }
+    }
+
+    public void OpenResidualCleaner()
+    {
+        var programs = _main.GetPage<ProgramsViewModel>(PageKey.Programs).Items.Select(i => i.Program).ToList();
+        var vm = new ResidualViewModel(_services, programs);
+        new ResidualWindow { DataContext = vm, Owner = System.Windows.Application.Current.MainWindow }.ShowDialog();
+        if (vm.AnythingChanged)
+        {
+            _ = _main.GetPage<ProgramsViewModel>(PageKey.Programs).RefreshAsync();
+            _main.GetPage<HistoryViewModel>(PageKey.History).Reload();
         }
     }
 
@@ -104,7 +126,12 @@ public sealed partial class FileShredderViewModel : ObservableObject
 
     public ObservableCollection<string> Paths { get; } = new();
     public ObservableCollection<string> Errors { get; } = new();
-    public IReadOnlyList<ShredMethod> Methods { get; } = new[] { ShredMethod.Quick, ShredMethod.Dod3Pass, ShredMethod.Dod7Pass };
+    public IReadOnlyList<KeyValuePair<ShredMethod, string>> Methods { get; } = new[]
+    {
+        new KeyValuePair<ShredMethod, string>(ShredMethod.Quick, "Quick – 1 pass"),
+        new KeyValuePair<ShredMethod, string>(ShredMethod.Dod3Pass, "Secure – 3 passes (DoD)"),
+        new KeyValuePair<ShredMethod, string>(ShredMethod.Dod7Pass, "Paranoid – 7 passes"),
+    };
 
     [ObservableProperty] private ShredMethod _method;
     [ObservableProperty] private bool _isBusy;

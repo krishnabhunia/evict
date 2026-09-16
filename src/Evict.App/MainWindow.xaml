@@ -21,17 +21,13 @@
     </WindowChrome.WindowChrome>
 
     <Grid Margin="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource MaxMargin}}">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="236" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="44" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- ═══ Title bar ═══ -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{DynamicResource Brush.TitleBar.Background}" BorderBrush="{DynamicResource Brush.Sidebar.Border}" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="{DynamicResource Brush.TitleBar.Background}" BorderBrush="{DynamicResource Brush.Sidebar.Border}" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="236" />
@@ -62,8 +58,15 @@
             </Grid>
         </Border>
 
+        <!-- ═══ Body (scaled by the text-size setting) ═══ -->
+        <Grid Grid.Row="1" x:Name="Body">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="236" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
         <!-- ═══ Sidebar ═══ -->
-        <Border Grid.Row="1" Grid.Column="0" Background="{DynamicResource Brush.Sidebar.Background}" BorderBrush="{DynamicResource Brush.Sidebar.Border}" BorderThickness="0,0,1,0">
+        <Border Grid.Column="0" Background="{DynamicResource Brush.Sidebar.Background}" BorderBrush="{DynamicResource Brush.Sidebar.Border}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Bottom" Margin="10,8,10,14">
                     <Border Style="{StaticResource Divider}" Margin="6,0,6,10" />
@@ -91,7 +94,7 @@
         </Border>
 
         <!-- ═══ Content ═══ -->
-        <Grid Grid.Row="1" Grid.Column="1">
+        <Grid Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -111,6 +114,7 @@
             </Border>
 
             <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Focusable="False" />
+        </Grid>
         </Grid>
     </Grid>
 </Window>

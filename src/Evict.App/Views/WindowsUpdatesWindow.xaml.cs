@@ -8,6 +8,7 @@ public partial class WindowsUpdatesWindow : Window
     public WindowsUpdatesWindow()
     {
         InitializeComponent();
+        App.UiState.ApplyToDialog(this);
         DataContextChanged += (_, e) =>
         {
             if (e.OldValue is WindowsUpdatesViewModel old) old.RequestClose -= Close;

@@ -1,0 +1,135 @@
+<Window x:Class="Evict.App.Views.ResidualWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Evict.App.ViewModels"
+        xmlns:views="clr-namespace:Evict.App.Views"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:ResidualViewModel}"
+        Style="{StaticResource Window.Dialog}"
+        Title="Residual Cleaner" Width="920" Height="660" MinWidth="760" MinHeight="520"
+        Icon="pack://application:,,,/Assets/app.ico">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Residual Cleaner" Style="{StaticResource Text.Title}" />
+            <TextBlock Style="{StaticResource Text.Subtitle}" Margin="0,4,0,0" Text="Finds what earlier uninstalls left behind – whether they were done with Evict, Windows Settings or the program's own uninstaller." />
+        </StackPanel>
+
+        <!-- Options -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" VerticalAlignment="Top" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Options}">
+            <StackPanel>
+                <TextBlock Text="What to look for" Style="{StaticResource Text.Section}" Margin="0,0,0,12" />
+                <CheckBox IsChecked="{Binding FromHistory}" Content="Programs uninstalled earlier (from Evict's History)" />
+                <TextBlock Text="{Binding HistoryHint}" Style="{StaticResource Text.Caption}" Margin="26,2,0,12" />
+                <CheckBox IsChecked="{Binding BrokenEntries}" Content="Broken Programs &amp; Features entries and anything they still match on disk" />
+                <TextBlock Text="{Binding BrokenHint}" Style="{StaticResource Text.Caption}" Margin="26,2,0,12" />
+                <CheckBox IsChecked="{Binding UnmatchedFolders}" Content="Folders in Program Files / ProgramData / AppData that no installed program references (heuristic)" />
+                <StackPanel Orientation="Horizontal" Margin="26,6,0,0" IsEnabled="{Binding UnmatchedFolders}">
+                    <TextBlock Text="Only folders untouched for at least" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                    <TextBox Style="{StaticResource TextBox.Base}" Text="{Binding MinAgeDays, UpdateSourceTrigger=LostFocus}" Width="70" Margin="8,0" TextAlignment="Right" />
+                    <TextBlock Text="days. These are always marked 'Review' and unchecked – portable apps, game saves and project folders can look like leftovers." Style="{StaticResource Text.Caption}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="560" />
+                </StackPanel>
+                <Border Style="{StaticResource Divider}" Margin="0,16,0,14" />
+                <CheckBox IsChecked="{Binding SendToRecycleBin}" Content="Send files and folders to the Recycle Bin instead of deleting permanently" />
+            </StackPanel>
+        </Border>
+
+        <!-- Scanning -->
+        <StackPanel Grid.Row="1" VerticalAlignment="Center" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Scanning}">
+            <TextBlock Text="Scanning for residual files and registry entries…" Style="{StaticResource Text.Section}" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding StatusText}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" Margin="0,8,0,12" TextTrimming="CharacterEllipsis" MaxWidth="700" />
+            <ProgressBar Value="{Binding Progress}" Maximum="100" Width="460" />
+        </StackPanel>
+
+        <!-- Review -->
+        <Grid Grid.Row="1" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Review}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border Background="{DynamicResource Brush.Accent.Subtle}" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+                <TextBlock Style="{StaticResource Text.Body}" TextWrapping="Wrap">
+                    <Run Text="Found" /><Run Text="{Binding Review.TotalCount, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="item(s)." />
+                    <Run Text="'Safe' and 'Likely' items come from History and broken entries. 'Review' items are unmatched folders – open them (↗) before deleting." Foreground="{DynamicResource Brush.Text.Secondary}" />
+                </TextBlock>
+            </Border>
+            <views:LeftoverReviewView Grid.Row="1" DataContext="{Binding Review}" />
+        </Grid>
+
+        <!-- Cleaning -->
+        <StackPanel Grid.Row="1" VerticalAlignment="Center" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Cleaning}">
+            <TextBlock Text="Removing…" Style="{StaticResource Text.Section}" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding StatusText}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" Margin="0,8,0,12" TextTrimming="CharacterEllipsis" MaxWidth="700" />
+            <ProgressBar Value="{Binding Progress}" Maximum="100" Width="460" />
+        </StackPanel>
+
+        <!-- Done -->
+        <Grid Grid.Row="1" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Done}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,18">
+                <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource Brush.Success.Subtle}">
+                    <TextBlock Text="&#xE73E;" Style="{StaticResource Icon}" FontSize="24" Foreground="{DynamicResource Brush.Success}" />
+                </Border>
+                <StackPanel VerticalAlignment="Center" Margin="16,0,0,0">
+                    <TextBlock Text="Done" Style="{StaticResource Text.Title}" />
+                    <TextBlock Style="{StaticResource Text.Subtitle}">
+                        <Run Text="{Binding Removed, Mode=OneWay}" /><Run Text="item(s) removed ·" />
+                        <Run Text="{Binding Failed, Mode=OneWay}" /><Run Text="failed ·" />
+                        <Run Text="{Binding BytesReclaimedText, Mode=OneWay}" /><Run Text="reclaimed" />
+                    </TextBlock>
+                </StackPanel>
+            </StackPanel>
+            <Border Grid.Row="1" Style="{StaticResource Card}" Visibility="{Binding Errors.Count, Converter={StaticResource BoolToVis}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Errors}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate><TextBlock Text="{Binding}" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Danger}" Margin="0,2" /></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Text="{Binding Review.SelectedSummary}" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Review}" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Options}">
+                    <Button Style="{StaticResource Button.Secondary}" Content="Cancel" Command="{Binding CancelCommand}" MinWidth="100" Margin="0,0,10,0" IsCancel="True" />
+                    <Button Style="{StaticResource Button.Primary}" Command="{Binding ScanCommand}" MinWidth="140">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE721;" Style="{StaticResource Icon}" FontSize="14" Foreground="White" />
+                            <TextBlock Text="Scan" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <Button Style="{StaticResource Button.Secondary}" Content="Cancel" Command="{Binding CancelCommand}" MinWidth="100" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Scanning}" />
+                <StackPanel Orientation="Horizontal" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Review}">
+                    <Button Style="{StaticResource Button.Secondary}" Content="Back" Command="{Binding BackCommand}" MinWidth="100" Margin="0,0,10,0" />
+                    <Button Style="{StaticResource Button.Danger}" Command="{Binding RemoveCommand}" MinWidth="180" IsEnabled="{Binding Review.SelectedCount, Converter={StaticResource ToBool}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE74D;" Style="{StaticResource Icon}" FontSize="14" Foreground="White" />
+                            <TextBlock Text="Remove selected" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <Button Style="{StaticResource Button.Primary}" Content="Close" Command="{Binding CloseCommand}" MinWidth="120" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Done}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

@@ -3,14 +3,14 @@
 **Goal:** a Windows uninstaller equivalent to IObit Uninstaller, owned by Krishna, delivered as a portable EXE.
 **Decisions (16 Sep 2026):** C# / .NET 8 / WPF · near-full clone in 3 incremental builds · cloud-built EXE, no local toolchain needed · portable first, Inno Setup installer later.
 
-## Delivery — Build 1 (v1.0.0)
+## Delivery — Build 2 (v1.1.0), 16 Sep 2026
 
 | Item | Location |
 |---|---|
-| `Evict.exe` (66 MB, self-contained win-x64, single file) | `G:\My Drive\Windows Software and Apps\Evict\` — as 4 parts + `Join-Evict.cmd` (double-click once to join; chat and Drive uploads are capped at 20–30 MB per file) |
-| Source code | same folder: `Evict-source-v1.0.0.zip`; also attached in chat |
+| `Evict.exe` 1.1.0 (66 MB, self-contained win-x64, single file) | `G:\My Drive\Windows Software and Apps\Evict\` — as 4 parts + `Join-Evict.cmd` (double-click once to join and clean up; uploads are capped at 20–30 MB per file) |
+| Source code | same folder: `Evict-source-v1.1.0.zip`; git repo with 2 commits inside the zip (`.git` excluded – see next steps) |
 | README (features, build, layout, safety design) | same folder: `README.md` |
-| SHA-256 of Evict.exe | `175c3929854648c8630db29585a241bf3949675280722a431979b0124ff74faa` |
+| SHA-256 of Evict.exe | `a2ed5e5db90978bc2540289c5cce0a4b6711f49ab71b6dec9f053ae33fb8a9e0` |
 
 ## Architecture
 
@@ -18,7 +18,7 @@
 |---|---|---|
 | Platform logic | `src/Evict.Core` (net8.0, `SupportedOSPlatform=windows`) | Registry (HKLM 64/32 + HKCU Uninstall keys), UserAssist last-used, WMI restore points, PowerShell (Appx, Get-HotFix), winget, FileSystemWatcher + registry snapshot (Install Monitor), shell Recycle Bin (SHFileOperation), services/tasks |
 | UI | `src/Evict.App` (net8.0-windows, WPF, CommunityToolkit.Mvvm) | Custom Fluent-style theme (Light/Dark), sidebar nav, 8 pages, 4 dialog windows, custom title bar via WindowChrome |
-| Tests | `tests/Evict.Core.Tests` (xunit, 98 tests) | Pure logic: name normaliser/matching, uninstall-string parser, winget table parser, Chromium prefs parser, path utils |
+| Tests | `tests/Evict.Core.Tests` (xunit, 119 tests) | Pure logic: name normaliser/matching, uninstall-string parser, winget table parser, Chromium prefs parser, path utils |
 | Build | `build/publish.sh`, `build/publish.ps1`, `build/xaml_check.py` | Cross-compiled from Linux with `EnableWindowsTargeting`; single-file compressed publish |
 
 ## Module status
@@ -37,17 +37,23 @@
 | 10 | Tools: File Shredder, Windows Updates, Restore Point, shortcuts | ✅ | |
 | 11 | History + CSV export + rescan | ✅ | |
 | 12 | Settings, Light/Dark theme | ✅ | |
-| 13 | Easy Uninstall drag-to-window widget | ⏳ Build 2 | Win32 WindowFromPoint → process → program |
-| 14 | Explorer right-click "Uninstall with Evict" | ⏳ Build 2 | needs installer / registry integration |
-| 15 | Inno Setup installer, code signing | ⏳ Build 3 | |
-| 16 | Real-time Install Monitor (filter driver) | ✗ out of scope | |
+| 13 | Software Health dashboard (home page, score + 8 tiles) | ✅ Build 2 | Auto-scan on start (setting) |
+| 14 | Easy Uninstall drag-to-window widget | ✅ Build 2 | WindowFromPoint → process → program; drop .exe/.lnk |
+| 15 | Explorer right-click "Uninstall with Evict" + CLI + single-instance forwarding | ✅ Build 2 | HKCU only, no admin |
+| 16 | Startup Apps manager | ✅ Build 2 | StartupApproved switch like Task Manager |
+| 17 | Residual Cleaner (history / broken entries / unmatched folders) | ✅ Build 2 | Unmatched folders always "Review" |
+| 18 | Known-bundleware list | ✅ Build 2 | user-extensible JSON |
+| 19 | Text size 90–140 %, themed ComboBox/ScrollBar/Tab/menus | ✅ Build 2 | |
+| 20 | GitHub Actions workflow | ✅ Build 2 (file) | Needs the repo + push (token) |
+| 21 | Inno Setup installer, auto-update, code signing | ⏳ Build 3 | |
+| 22 | Real-time Install Monitor (filter driver) | ✗ out of scope | |
 
 ## Verification done / not done
 
 | Check | Result |
 |---|---|
 | C# compile (Release), 0 warnings | ✅ |
-| 98 xunit tests | ✅ all pass (run on Linux) |
+| 119 xunit tests | ✅ all pass (run on Linux) |
 | XAML static checks (resources, theme parity, binding roots, XML well-formed) | ✅ 0 problems |
 | PE inspection of EXE (x64, GUI, manifest asInvoker + PerMonitorV2, icon, version info) | ✅ |
 | **Running the UI on Windows** | ❌ not yet — cross-compiled on Linux; first launch/visual test happens on Krishna's laptop (Claude can drive it via computer-use with approval) |
@@ -62,6 +68,6 @@
 
 ## Next steps
 
-1. Krishna runs `Join-Evict.cmd`, launches `Evict.exe`, reports (or lets Claude screenshot via computer-use) any crash/visual issue → hot-fix build 1.0.1.
-2. Build 2: Easy Uninstall widget, Explorer context menu, ComboBox/ScrollBar dark-theme polish, per-row expander details like IObit.
-3. Build 3: Inno Setup installer with optional context-menu integration, auto-update check, code-signing discussion.
+1. **GitHub**: Krishna creates repo (e.g. `krishnabhunia/evict`) and gives Claude a fine-grained token (Contents + Workflows: read/write) → push; every push then builds `Evict.exe` on GitHub Actions, tags create Releases (no more file splitting).
+2. **QA on the laptop** (still not done – all builds are cross-compiled blind): open every page/dialog, try the widget, one real uninstall via Install Monitor → hot-fix 1.1.x.
+3. **Build 3**: Inno Setup installer (Start-menu, optional context menu, uninstall entry), update check against GitHub Releases, code-signing options.

@@ -4,6 +4,9 @@
                     xmlns:views="clr-namespace:Evict.App.Views">
 
     <!-- View model → view. The main window's ContentControl picks these up automatically. -->
+    <DataTemplate DataType="{x:Type vm:HealthViewModel}">
+        <views:HealthView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:ProgramsViewModel}">
         <views:ProgramsView />
     </DataTemplate>

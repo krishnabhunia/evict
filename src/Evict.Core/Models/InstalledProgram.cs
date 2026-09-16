@@ -78,6 +78,8 @@ public sealed class InstalledProgram
     /// <summary>Set by the bundleware heuristic when several unrelated programs were installed within minutes.</summary>
     public bool IsBundleSuspect { get; set; }
     public string? BundleGroupNote { get; set; }
+    /// <summary>Name matches the known-bundleware list (see KnownBundleware).</summary>
+    public bool IsKnownBundleware { get; set; }
 
     /// <summary>True when neither the install folder nor the uninstaller executable exist any more.</summary>
     public bool IsBrokenEntry { get; set; }

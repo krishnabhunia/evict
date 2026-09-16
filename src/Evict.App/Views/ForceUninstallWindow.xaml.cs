@@ -8,6 +8,7 @@ public partial class ForceUninstallWindow : Window
     public ForceUninstallWindow()
     {
         InitializeComponent();
+        App.UiState.ApplyToDialog(this);
         DataContextChanged += (_, e) =>
         {
             if (e.OldValue is ForceUninstallViewModel old) old.RequestClose -= Close;

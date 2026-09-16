@@ -30,6 +30,11 @@
                 <StackPanel>
                     <TextBlock Text="Appearance" Style="{StaticResource Text.Section}" Margin="0,0,0,12" />
                     <CheckBox Style="{StaticResource SettingRow}" IsChecked="{Binding IsDarkTheme}" Content="Dark theme" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Text size" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <ComboBox ItemsSource="{Binding TextSizeOptions}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding TextSize, Mode=TwoWay}" Width="200" />
+                        <TextBlock Text="Ctrl + / Ctrl − / Ctrl 0 also work anywhere in the app." Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -74,6 +79,15 @@
                         <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource Num}" Text="{Binding InfrequentlyUsedDays, UpdateSourceTrigger=LostFocus}" Margin="12,10,0,0" />
                         <TextBlock Grid.Row="2" Grid.Column="2" Text="days" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="8,10,0,0" />
                     </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="Integration" Style="{StaticResource Text.Section}" Margin="0,0,0,12" />
+                    <CheckBox Style="{StaticResource SettingRow}" IsChecked="{Binding ExplorerContextMenu}" Content="Add 'Uninstall with Evict' to the right-click menu of programs and shortcuts in Explorer" />
+                    <TextBlock Style="{StaticResource Hint}" Text="Registered for your user account only (no administrator needed). If you move Evict.exe, toggle this off and on again." />
+                    <CheckBox Style="{StaticResource SettingRow}" IsChecked="{Binding HealthAutoScan}" Content="Run the Software Health scan automatically when Evict starts" />
                 </StackPanel>
             </Border>
 

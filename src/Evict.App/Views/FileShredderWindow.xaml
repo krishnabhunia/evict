@@ -45,7 +45,7 @@
         <StackPanel Grid.Row="3" Margin="0,12,0,0">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Method:" Style="{StaticResource Text.Body}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                <ComboBox ItemsSource="{Binding Methods}" SelectedItem="{Binding Method}" Width="160" />
+                <ComboBox ItemsSource="{Binding Methods}" DisplayMemberPath="Value" SelectedValuePath="Key" SelectedValue="{Binding Method, Mode=TwoWay}" Width="210" />
                 <TextBlock Text="{Binding MethodDescription}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="12,0,0,0" />
             </StackPanel>
             <TextBlock Style="{StaticResource Text.Caption}" Margin="0,8,0,0" Text="Note: on SSDs the drive's wear-levelling may keep old copies of data internally; shredding is most effective on hard disks. Files are not sent to the Recycle Bin." />

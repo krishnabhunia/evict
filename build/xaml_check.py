@@ -52,7 +52,7 @@ for f in cs_files:
             toks = part.strip().split()
             if len(toks) >= 2: members.add(toks[-1])
 # CollectionViewGroup members used in group headers
-members |= {"Name", "ItemCount", "Items", "Count", "PlacementTarget", "DataContext", "WindowState", "Foreground", "IsExpanded", "SelectedItem"}
+members |= {"Name", "ItemCount", "Items", "Count", "PlacementTarget", "DataContext", "WindowState", "Foreground", "IsExpanded", "SelectedItem", "IsDropDownOpen", "ActualWidth", "Key", "Value"}
 
 for f in xaml_files:
     text = f.read_text(encoding="utf-8")

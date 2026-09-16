@@ -3,12 +3,14 @@ using System.Windows.Threading;
 using Evict.App.Services;
 using Evict.App.ViewModels;
 using Evict.Core.Services;
+using Evict.Core.Util;
 
 namespace Evict.App;
 
 public partial class App : Application
 {
     public static AppServices Services { get; private set; } = null!;
+    public static UiState UiState { get; } = new();
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -22,12 +24,47 @@ public partial class App : Application
         Services.Settings.Load();
         Services.History.Load();
         ApplyTheme(Services.Settings.Current.Theme);
+        UiState.Scale = UiState.Clamp(Services.Settings.Current.UiScale);
+        UiState.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(UiState.Scale))
+            {
+                Services.Settings.Current.UiScale = UiState.Scale;
+                Services.Settings.Save();
+            }
+        };
 
-        Log.Info($"{AppPaths.ProductName} starting. Elevated={ElevationHelper.IsElevated}, OS={Environment.OSVersion}, .NET={Environment.Version}");
+        Log.Info($"{AppPaths.ProductName} starting. Elevated={ElevationHelper.IsElevated}, OS={Environment.OSVersion}, .NET={Environment.Version}, args=[{string.Join(" ", Program.StartupArgs)}]");
 
-        var main = new MainWindow { DataContext = new MainViewModel(Services) };
+        // Keep the Explorer context-menu command pointing at this exe if it moved.
+        if (Services.Settings.Current.ExplorerContextMenu && ShellIntegration.NeedsRefresh()) ShellIntegration.Register();
+
+        var mainVm = new MainViewModel(Services);
+        var main = new MainWindow { DataContext = mainVm };
         MainWindow = main;
         main.Show();
+
+        SingleInstance.StartServer(args => HandleArgs(mainVm, args));
+        if (Program.StartupArgs.Length > 0) HandleArgs(mainVm, Program.StartupArgs);
+        else if (Services.Settings.Current.EasyUninstallWidgetVisible) mainVm.ShowWidgetCommand.Execute(null);
+    }
+
+    private static void HandleArgs(MainViewModel vm, string[] args)
+    {
+        try
+        {
+            var w = Current.MainWindow;
+            if (w != null)
+            {
+                if (w.WindowState == WindowState.Minimized) w.WindowState = WindowState.Normal;
+                w.Show();
+                w.Activate();
+                w.Topmost = true; w.Topmost = false; // bring to front without staying on top
+            }
+            var options = CommandLineOptions.Parse(args);
+            if (!options.IsEmpty) _ = vm.HandleCommandLineAsync(options);
+        }
+        catch (Exception ex) { Log.Error("Handling command line failed", ex); }
     }
 
     public static void ApplyTheme(string theme)

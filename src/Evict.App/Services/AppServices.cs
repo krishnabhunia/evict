@@ -19,5 +19,7 @@ public sealed class AppServices
     public InstallMonitorService Monitor { get; } = new();
     public ForceUninstallService Force { get; } = new();
     public FileShredder Shredder { get; } = new();
+    public StartupService Startup { get; } = new();
+    public ResidualScanner Residual { get; } = new();
     public IconProvider Icons { get; } = new();
 }

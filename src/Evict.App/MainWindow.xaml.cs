@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using Evict.App.Services;
 using Evict.Core.Services;
 
 namespace Evict.App;
@@ -19,6 +22,11 @@ public partial class MainWindow : Window
         if (s.WindowMaximized) WindowState = WindowState.Maximized;
         StateChanged += (_, _) => UpdateMaxRestoreGlyph();
         SourceInitialized += (_, _) => TryRoundCorners();
+
+        // Text size / zoom: scale the body (not the title bar, whose caption height is fixed).
+        ApplyScale(App.UiState.Scale);
+        App.UiState.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(UiState.Scale)) ApplyScale(App.UiState.Scale); };
+        PreviewKeyDown += OnPreviewKeyDown;
         Closing += (_, _) =>
         {
             var cur = App.Services.Settings.Current;
@@ -33,6 +41,19 @@ public partial class MainWindow : Window
     {
         MaxRestoreButton.Content = WindowState == WindowState.Maximized ? "" : "";
         MaxRestoreButton.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximize";
+    }
+
+    private void ApplyScale(double s) => Body.LayoutTransform = Math.Abs(s - 1.0) < 0.001 ? Transform.Identity : new ScaleTransform(s, s);
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+        switch (e.Key)
+        {
+            case Key.OemPlus or Key.Add: App.UiState.Step(+0.1); e.Handled = true; break;
+            case Key.OemMinus or Key.Subtract: App.UiState.Step(-0.1); e.Handled = true; break;
+            case Key.D0 or Key.NumPad0: App.UiState.Scale = 1.0; e.Handled = true; break;
+        }
     }
 
     private void OnMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;

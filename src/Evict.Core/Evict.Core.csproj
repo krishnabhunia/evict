@@ -9,6 +9,7 @@
          pure-logic parts can be unit tested on Linux CI. -->
     <SupportedOSPlatform>windows</SupportedOSPlatform>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

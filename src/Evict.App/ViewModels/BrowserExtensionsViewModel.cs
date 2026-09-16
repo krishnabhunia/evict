@@ -30,7 +30,10 @@ public sealed partial class ExtensionItemViewModel : ObservableObject
     public string InstalledText => Info.InstallTime is { } d ? d.ToString("dd MMM yyyy") : "—";
     public string Description => Info.Description ?? "";
     public string PermissionsText => Info.Permissions.Count == 0 ? "No special permissions" : string.Join(", ", Info.Permissions);
-    public bool IsRisky => Info.Permissions.Any(p => p is "<all_urls>" or "webRequest" or "webRequestBlocking" or "history" or "cookies" or "clipboardRead" or "debugger" or "nativeMessaging" or "proxy") || Info.Permissions.Any(p => p.Contains("://*/*"));
+    public bool IsRisky => IsRiskyInfo(Info);
+    public static bool IsRiskyInfo(BrowserExtensionInfo info) =>
+        !info.IsComponent && (info.Permissions.Any(p => p is "<all_urls>" or "webRequest" or "webRequestBlocking" or "history" or "cookies" or "clipboardRead" or "debugger" or "nativeMessaging" or "proxy")
+                              || info.Permissions.Any(p => p.Contains("://*/*")));
     public bool CanRemove => !Info.IsComponent && !Info.InstalledByPolicy;
     public string BrowserGlyph => Info.Browser == BrowserKind.Firefox ? "" : "";
     public string Tooltip => $"{Name} {Version}\nID: {Info.ExtensionId}\n{Description}\n\nPermissions: {PermissionsText}";
