@@ -63,7 +63,7 @@
             </Grid.RowDefinitions>
             <Border Background="{DynamicResource Brush.Accent.Subtle}" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
                 <TextBlock Style="{StaticResource Text.Body}" TextWrapping="Wrap">
-                    <Run Text="Found" /><Run Text="{Binding TotalFoundText, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="of removable data. Items marked" /><Run Text="Review" FontWeight="SemiBold" /><Run Text="are unchecked – look before you include them. Expand a category to see and pick individual items." />
+                    <Run Text="Found " /><Run Text="{Binding TotalFoundText, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" of removable data. Items marked " /><Run Text="Review" FontWeight="SemiBold" /><Run Text=" are unchecked – look before you include them. Expand a category to see and pick individual items." />
                 </TextBlock>
             </Border>
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">

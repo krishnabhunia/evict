@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.2 — second Windows QA pass (17 Sep 2026)
+
+- **Install Monitor: detected installations were recorded empty** (e.g. "TwoButtonApp – 0 folders, 0 files"). In *Ask* mode
+  recording only started after the click, when the installer had already finished, and the file watchers only started
+  after the slow registry snapshot. Recording now starts the moment an installer is detected (the banner/notification
+  offers "don't record" instead) and the file watchers start first.
+- Residual Cleaner: broken entries of runtimes, redistributables, drivers and OEM tools (e.g. Microsoft Visual C++
+  Redistributable, HP services) are marked **Review** and not pre-selected.
+- System Cleanup: categories that need administrator rights are not pre-selected when Evict runs without them.
+- Browser Extensions: profiles with the same name (e.g. two "Krishna" profiles) are listed separately instead of merged
+  into one group with duplicate rows.
+- Missing spaces in "Found … item(s)" / "of removable data" texts; disabled buttons are visible in the Light theme.
+
 ## 1.3.1 — hot-fix after first Windows QA (17 Sep 2026)
 
 - **Fixed: every Tools dialog crashed on open** (System Cleanup, Startup Apps, File Shredder, Residual Cleaner, Windows

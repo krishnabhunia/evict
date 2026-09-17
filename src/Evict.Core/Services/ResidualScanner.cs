@@ -100,7 +100,9 @@ public sealed class ResidualScanner
                 Add(new LeftoverItem
                 {
                     Kind = LeftoverKind.RegistryKey, Path = RegistryPaths.Display(p.Hive, p.View, sub), Hive = p.Hive, RegView = p.View, SubKey = sub,
-                    Confidence = LeftoverConfidence.High, Detail = "Programs & Features entry whose files are gone", ProgramName = p.DisplayName,
+                    Confidence = IsSystemComponentLike(p) ? LeftoverConfidence.Low : LeftoverConfidence.High,
+                    Detail = IsSystemComponentLike(p) ? "Entry whose uninstaller is gone – runtime/driver, review before removing" : "Programs & Features entry whose files are gone",
+                    ProgramName = p.DisplayName,
                 });
                 var r = _scanner.Scan(LeftoverScanner.Fingerprint(p), scanOpts, null, ct);
                 foreach (var item in r.Items) Add(item);
@@ -303,4 +305,13 @@ public sealed class ResidualScanner
         }
         return newest;
     }
+
+    /// <summary>Runtimes, redistributables, drivers and OEM services: other software depends on them, so never pre-select their entries.</summary>
+    internal static bool IsSystemComponentLike(InstalledProgram p)
+    {
+        var n = (p.DisplayName ?? "") + " " + (p.Publisher ?? "");
+        string[] hints = { "Redistributable", "Runtime", "Microsoft Corporation", "Driver", "Visual C++", ".NET", "SDK", "HP ", "Intel", "NVIDIA", "Realtek", "AMD", "Dell", "Lenovo" };
+        return hints.Any(h => n.Contains(h, StringComparison.OrdinalIgnoreCase));
+    }
+
 }

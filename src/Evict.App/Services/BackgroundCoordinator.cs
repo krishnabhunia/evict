@@ -19,6 +19,7 @@ public sealed partial class BackgroundCoordinator : ObservableObject
     private readonly InstallerDetector _detector = new();
     private readonly Dispatcher _ui = Application.Current.Dispatcher;
     private CancellationTokenSource? _recordingCts;
+    private int _recordingPid;
     private bool _closeToTrayHintShown;
 
     public BackgroundCoordinator(AppServices services, MainViewModel main)
@@ -126,11 +127,20 @@ public sealed partial class BackgroundCoordinator : ObservableObject
             _ = RecordAsync(d);
             return;
         }
-        _main.PendingInstaller = d; // in-window prompt (visible when the window is open)
-        Notify("Installer detected: " + d.DisplayName,
-            $"{d.FileName} just started. Click here to record everything it installs, so Evict can remove it completely later.",
-            () => { _main.PendingInstaller = null; _ = RecordAsync(d); });
+        // "Ask" still starts recording at once – waiting for a click would miss the installation.
+        // The prompt only decides whether the log is kept.
+        _ = RecordAsync(d);
+        _main.PendingInstaller = d;
+        Notify("Recording installation: " + d.DisplayName,
+            $"{d.FileName} just started and Evict is recording what it installs, so it can be removed completely later. Click to open Evict if you don't want this log.",
+            () => _main.ShowMainWindow());
         if (Tray is null && Application.Current.MainWindow is { IsVisible: false }) _main.ShowMainWindow(); // no tray → the banner is the only prompt
+    }
+
+    /// <summary>Stops the recording started for the pending installer without saving a log.</summary>
+    public void DiscardRecording(DetectedInstaller d)
+    {
+        if (IsRecording && _recordingPid == d.ProcessId) CancelRecording();
     }
 
     /// <summary>Records a running installation; safe to call from the UI thread (returns immediately, work continues in the background).</summary>
@@ -138,7 +148,7 @@ public sealed partial class BackgroundCoordinator : ObservableObject
     {
         if (!_ui.CheckAccess()) { await _ui.InvokeAsync(() => RecordAsync(d)); return; }
         if (IsRecording) return;
-        if (_main.PendingInstaller?.ProcessId == d.ProcessId) _main.PendingInstaller = null;
+        _recordingPid = d.ProcessId;
         IsRecording = true;
         RecordingTitle = d.DisplayName;
         RecordingIndeterminate = true;
@@ -171,6 +181,7 @@ public sealed partial class BackgroundCoordinator : ObservableObject
         finally
         {
             _detector.Untrack(tree);
+            if (_main.PendingInstaller?.ProcessId == d.ProcessId) _main.PendingInstaller = null;
             IsRecording = false;
             RecordingTitle = null;
             Tray?.SetRecording(null);

@@ -57,7 +57,7 @@
             </Grid.RowDefinitions>
             <Border Background="{DynamicResource Brush.Accent.Subtle}" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
                 <TextBlock Style="{StaticResource Text.Body}" TextWrapping="Wrap">
-                    <Run Text="Found" /><Run Text="{Binding Review.TotalCount, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="item(s)." />
+                    <Run Text="Found " /><Run Text="{Binding Review.TotalCount, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" item(s)." />
                     <Run Text="'Safe' and 'Likely' items come from History and broken entries. 'Review' items are unmatched folders – open them (↗) before deleting." Foreground="{DynamicResource Brush.Text.Secondary}" />
                 </TextBlock>
             </Border>

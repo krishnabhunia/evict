@@ -319,18 +319,20 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private DetectedInstaller? _pendingInstaller;
     public bool ShowInstallerBanner => PendingInstaller != null;
-    public string InstallerBannerText => PendingInstaller is { } d ? $"Installer detected: {d.DisplayName} ({d.FileName}). Record everything it installs with Install Monitor?" : "";
+    public string InstallerBannerText => PendingInstaller is { } d ? $"Recording the installation of {d.DisplayName} ({d.FileName}) so it can be removed completely later." : "";
     partial void OnPendingInstallerChanged(DetectedInstaller? value) { OnPropertyChanged(nameof(ShowInstallerBanner)); OnPropertyChanged(nameof(InstallerBannerText)); }
 
+    /// <summary>Keep recording – just hide the banner.</summary>
+    [RelayCommand] private void RecordPendingInstaller() => PendingInstaller = null;
+
+    /// <summary>Don't record this one: stop the running recording without saving a log.</summary>
     [RelayCommand]
-    private void RecordPendingInstaller()
+    private void DismissInstallerBanner()
     {
         var d = PendingInstaller;
         PendingInstaller = null;
-        if (d != null) _ = Background.RecordAsync(d);
+        if (d != null) Background.DiscardRecording(d);
     }
-
-    [RelayCommand] private void DismissInstallerBanner() => PendingInstaller = null;
 
     // ───────────────────────────── generic notice bar (used when there is no tray icon) ─────────────────────────────
 

@@ -109,10 +109,13 @@ public sealed class BrowserExtensionService
         }
         catch { /* ignore */ }
 
-        foreach (var d in SafeProfileDirs(root.UserDataDir, names))
+        var dirs = SafeProfileDirs(root.UserDataDir, names);
+        var display = dirs.Select(d => { var leaf = Path.GetFileName(d); return (Dir: d, Leaf: leaf, Name: names.TryGetValue(leaf, out var n) ? n : leaf); }).ToList();
+        foreach (var x in display)
         {
-            var leaf = Path.GetFileName(d);
-            yield return (d, names.TryGetValue(leaf, out var n) ? n : leaf);
+            // Two profiles may carry the same name ("Krishna") – add the folder so their lists are not merged.
+            bool clash = display.Count(o => o.Name.Equals(x.Name, StringComparison.OrdinalIgnoreCase)) > 1;
+            yield return (x.Dir, clash && !x.Name.Equals(x.Leaf, StringComparison.OrdinalIgnoreCase) ? $"{x.Name} ({x.Leaf})" : x.Name);
         }
     }
 

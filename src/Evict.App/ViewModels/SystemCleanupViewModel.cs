@@ -16,7 +16,7 @@ public sealed partial class CleanupItemViewModel : ObservableObject
     {
         Group = group;
         Item = item;
-        _isSelected = item.Confidence != LeftoverConfidence.Low && !group.OpensSettings;
+        _isSelected = item.Confidence != LeftoverConfidence.Low && !group.OpensSettings && !group.NeedsElevation;
     }
 
     public CleanupGroupViewModel Group { get; }

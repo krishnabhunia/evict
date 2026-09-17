@@ -113,11 +113,8 @@ public sealed class InstallMonitorService
 
         internal void Start(IProgress<ProgressReport>? progress, CancellationToken ct)
         {
-            progress?.Report(new ProgressReport("Taking registry snapshot…", 5));
-            _registryBefore = SnapshotRegistry(ct);
-            _uninstallBefore = SnapshotUninstallKeys();
-
-            progress?.Report(new ProgressReport("Starting file system watchers…", 40));
+            // Watchers first: they start instantly, so fast installers are not missed while the registry is walked.
+            progress?.Report(new ProgressReport("Starting file system watchers…", 5));
             foreach (var root in WatchRoots().Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
@@ -138,6 +135,10 @@ public sealed class InstallMonitorService
                 }
                 catch (Exception ex) { Log.Warn($"Watcher for {root}: {ex.Message}"); }
             }
+
+            progress?.Report(new ProgressReport("Taking registry snapshot…", 30));
+            _registryBefore = SnapshotRegistry(ct);
+            _uninstallBefore = SnapshotUninstallKeys();
         }
 
         private static void Record(ConcurrentDictionary<string, byte> set, string path)

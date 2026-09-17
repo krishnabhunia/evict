@@ -15,7 +15,7 @@
     <SolidColorBrush x:Key="Brush.Text.Secondary" Color="#5B6472" />
     <SolidColorBrush x:Key="Brush.Text.Tertiary" Color="#8B93A1" />
     <SolidColorBrush x:Key="Brush.Text.OnAccent" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="Brush.Text.Disabled" Color="#A9B0BC" />
+    <SolidColorBrush x:Key="Brush.Text.Disabled" Color="#8B93A0" />
 
     <SolidColorBrush x:Key="Brush.Accent" Color="#2F5BEA" />
     <SolidColorBrush x:Key="Brush.Accent.Hover" Color="#284FCF" />
@@ -38,7 +38,7 @@
     <SolidColorBrush x:Key="Brush.Control.Border" Color="#CFD5DF" />
     <SolidColorBrush x:Key="Brush.Control.Hover" Color="#F2F4F8" />
     <SolidColorBrush x:Key="Brush.Control.Pressed" Color="#E5E9F0" />
-    <SolidColorBrush x:Key="Brush.Control.Disabled" Color="#F0F2F5" />
+    <SolidColorBrush x:Key="Brush.Control.Disabled" Color="#E4E8EE" />
 
     <SolidColorBrush x:Key="Brush.Row.Hover" Color="#F4F6FB" />
     <SolidColorBrush x:Key="Brush.Row.Selected" Color="#E8EEFD" />
