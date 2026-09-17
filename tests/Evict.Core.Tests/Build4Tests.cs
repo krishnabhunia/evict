@@ -206,6 +206,17 @@ public class Build4Tests
     }
 
     [Fact]
+    public void Winget_DescribesKnownErrorCodes()
+    {
+        Assert.StartsWith("no applicable update", WingetService.DescribeFailure(unchecked((int)0x8A15002B), ""));
+        Assert.Contains("0x8A15002B", WingetService.DescribeFailure(unchecked((int)0x8A15002B), ""));
+        Assert.Contains("hash does not match", WingetService.DescribeFailure(-1978335215, "Installer hash does not match"));
+        Assert.StartsWith("winget failed (0x00000063)", WingetService.DescribeFailure(99, "Something odd happened"));
+        Assert.EndsWith("Something odd happened", WingetService.DescribeFailure(99, "Found Foo [Foo.Bar]\n  ██████████  10 MB / 10 MB\nSomething odd happened\n"));
+        Assert.Null(WingetService.DescribeExitCode(0));
+    }
+
+    [Fact]
     public void Settings_Build4Defaults()
     {
         var s = new AppSettings();

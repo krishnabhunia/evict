@@ -41,7 +41,7 @@ public sealed class WingetService
         var list = ParseUpgradeTable(res.StdOut);
         string? err = null;
         if (list.Count == 0 && res.ExitCode != 0 && !res.StdOut.Contains("No installed package", StringComparison.OrdinalIgnoreCase))
-            err = $"winget exited with code {res.ExitCode}: {FirstUseful(res.StdOut + res.StdErr)}";
+            err = DescribeFailure(res.ExitCode, res.StdOut + res.StdErr);
         return (list, err);
     }
 
@@ -138,8 +138,90 @@ public sealed class WingetService
                 await Task.Delay(TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
                 continue;
             }
-            return (false, $"winget exited with code {res.ExitCode}: {FirstUseful(text)}");
+            return (false, DescribeFailure(res.ExitCode, text));
         }
+    }
+
+    /// <summary>Human-readable failure: known winget HRESULTs get a name, plus the most telling output line.</summary>
+    public static string DescribeFailure(int exitCode, string output)
+    {
+        var known = DescribeExitCode(exitCode);
+        var detail = LastUseful(output);
+        var hex = $"0x{unchecked((uint)exitCode):X8}";
+        return known != null
+            ? $"{known} ({hex})" + (detail.Length > 0 ? " – " + detail : "")
+            : $"winget failed ({hex})" + (detail.Length > 0 ? " – " + detail : "");
+    }
+
+    /// <summary>The last non-progress line of winget's output (errors come last), trimmed.</summary>
+    public static string LastUseful(string s)
+    {
+        var lines = s.Split('\n').Select(l => l.Trim())
+            .Where(l => l.Length > 0 && !l.All(c => c is '-' or '\\' or '|' or '/' or ' ' or '█' or '▒' or '▓') && !l.StartsWith("Found ", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var last = lines.LastOrDefault() ?? "";
+        return last.Length > 220 ? last[..220] + "…" : last;
+    }
+
+    /// <summary>Names for the winget (App Installer) error codes users actually hit. Null for anything else.</summary>
+    public static string? DescribeExitCode(int exitCode)
+    {
+        uint code = unchecked((uint)exitCode);
+        return code switch
+        {
+            0x8A150001 => "winget internal error",
+            0x8A150002 => "winget rejected the command line",
+            0x8A150003 => "the command failed",
+            0x8A150006 => "the installer failed to start",
+            0x8A150008 => "download failed",
+            0x8A15000B => "winget's sources are not configured",
+            0x8A150010 => "no installer suits this machine",
+            0x8A150011 => "installer hash does not match the manifest (publisher updated the file – try again later)",
+            0x8A150014 => "no installed package matches (winget lost track of it)",
+            0x8A150016 => "several packages match – ambiguous",
+            0x8A150019 => "administrator rights are required for this package",
+            0x8A15001B => "Store installs are blocked by policy",
+            0x8A15001E => "Microsoft Store install failed",
+            0x8A15002B => "no applicable update (the installed version is not upgradeable this way)",
+            0x8A15002D => "installer failed the security check",
+            0x8A15002E => "downloaded size does not match",
+            0x8A15003A => "blocked by policy",
+            0x8A150041 => "package agreements were not accepted",
+            0x8A150046 => "source agreements were not accepted",
+            0x8A150049 => "Windows Installer (MSI) failed",
+            0x8A15004F => "the available version is not newer",
+            0x8A150050 => "installed version unknown – winget cannot compare versions",
+            0x8A150052 => "portable install failed",
+            0x8A150056 => "this installer refuses to run elevated – start Evict without administrator rights",
+            0x8A150061 => "already installed",
+            0x8A150065 => "one or more installs failed",
+            0x8A150068 => "package is pinned",
+            0x8A150069 => "package is a Store stub",
+            0x8A150101 => "the application is in use – close it and retry",
+            0x8A150102 => "another installation is in progress",
+            0x8A150103 => "a file is in use",
+            0x8A150104 => "a dependency is missing",
+            0x8A150105 => "disk full",
+            0x8A150106 => "insufficient memory",
+            0x8A150107 => "no network",
+            0x8A150108 => "installer failed – contact the publisher",
+            0x8A150109 => "installed – a restart is required to finish",
+            0x8A15010A => "a restart is required before installing",
+            0x8A15010B => "the installer started a restart",
+            0x8A15010C => "cancelled",
+            0x8A15010D => "already installed",
+            0x8A15010E => "would be a downgrade",
+            0x8A15010F => "blocked by policy",
+            0x8A150110 => "dependencies could not be installed",
+            0x8A150111 => "the application is in use",
+            0x8A150112 => "invalid installer parameter",
+            0x8A150113 => "not supported on this system",
+            0x8A150114 => "upgrade not supported by this installer",
+            0x80070005 => "access denied",
+            0x80070652 => "another installation is already in progress",
+            0x80072EE7 or 0x80072EFD or 0x80072EFE => "network error",
+            _ => null,
+        };
     }
 
     /// <summary>MSI "another installation is already in progress" – 1618 as a raw code or wrapped in an HRESULT (0x80070652).</summary>
