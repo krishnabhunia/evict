@@ -1104,7 +1104,6 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
-        <Setter Property="WindowStartupLocation" Value="CenterOwner" />
         <Setter Property="ShowInTaskbar" Value="False" />
     </Style>
 

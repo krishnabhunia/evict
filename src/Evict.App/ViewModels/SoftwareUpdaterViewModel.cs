@@ -138,6 +138,7 @@ public sealed partial class SoftwareUpdaterViewModel : ObservableObject, IActiva
         StatusText = parallel > 1 ? $"Updating {targets.Count} programs, {parallel} at a time…" : $"Updating {targets.Count} program(s)…";
         var ui = System.Windows.Application.Current.Dispatcher;
         var gate = new SemaphoreSlim(parallel);
+        App.Background?.SuspendDetection(true);
         try
         {
             var tasks = targets.Select(async t =>
@@ -180,7 +181,12 @@ public sealed partial class SoftwareUpdaterViewModel : ObservableObject, IActiva
                 : $"Updated {ok} package(s)" + (fail > 0 ? $", {fail} failed." : ".");
         }
         catch (OperationCanceledException) { StatusText = "Cancelled."; }
-        finally { IsUpdating = false; foreach (var t in Items) t.IsUpdating = false; }
+        finally
+        {
+            IsUpdating = false;
+            foreach (var t in Items) t.IsUpdating = false;
+            App.Background?.SuspendDetection(false);
+        }
         if (ok > 0) await CheckAsync();
     }
 

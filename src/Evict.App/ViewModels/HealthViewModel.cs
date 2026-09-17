@@ -61,12 +61,12 @@ public sealed partial class HealthViewModel : ObservableObject, IActivatable
         _main = main;
         Tiles = new ObservableCollection<HealthTileViewModel>
         {
-            new() { Key = "outdated", Title = "Outdated programs", Glyph = "", ActionText = "Update", Weight = 3, MaxPenalty = 24 },
-            new() { Key = "residual", Title = "Leftovers from earlier uninstalls", Glyph = "", ActionText = "Clean up", Weight = 1, MaxPenalty = 20 },
-            new() { Key = "broken", Title = "Broken uninstall entries", Glyph = "", ActionText = "Review", Weight = 5, MaxPenalty = 20 },
-            new() { Key = "bundleware", Title = "Possible bundleware", Glyph = "", ActionText = "Review", Weight = 6, MaxPenalty = 24 },
-            new() { Key = "extensions", Title = "Extensions with broad permissions", Glyph = "", ActionText = "Review", Weight = 3, MaxPenalty = 15 },
-            new() { Key = "unused", Title = "Large programs not used recently", Glyph = "", ActionText = "Review", Weight = 2, MaxPenalty = 16 },
+            new() { Key = "outdated", Title = "Outdated programs", Glyph = "", ActionText = "Update", Weight = 3, MaxPenalty = 12 },
+            new() { Key = "residual", Title = "Leftovers from earlier uninstalls", Glyph = "", ActionText = "Clean up", Weight = 1, MaxPenalty = 5 },
+            new() { Key = "broken", Title = "Broken uninstall entries", Glyph = "", ActionText = "Review", Weight = 3, MaxPenalty = 10 },
+            new() { Key = "bundleware", Title = "Possible bundleware", Glyph = "", ActionText = "Review", Weight = 2, MaxPenalty = 12 },
+            new() { Key = "extensions", Title = "Extensions with broad permissions", Glyph = "", ActionText = "Review", Weight = 1, MaxPenalty = 8 },
+            new() { Key = "unused", Title = "Large programs not used recently", Glyph = "", ActionText = "Review", Weight = 1, MaxPenalty = 8 },
             new() { Key = "bloat", Title = "Pre-installed Store apps flagged as bloatware", Glyph = "", ActionText = "Review", Weight = 1, MaxPenalty = 10 },
             new() { Key = "startup", Title = "Programs starting at sign-in", Glyph = "", ActionText = "Manage", Weight = 0, MaxPenalty = 0 },
         };

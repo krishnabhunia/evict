@@ -34,7 +34,8 @@ public static class InstallerHeuristics
         "vs_installer", "vs_setup_bootstrapper", "vs_installershell",
     };
 
-    private static readonly string[] SystemPathFragments = { @"\windows\", @"\program files\windowsapps\", @"\microsoft\edge\", @"\google\update\" };
+    // Programs already installed (their self-updaters/helpers) are not new installations.
+    private static readonly string[] SystemPathFragments = { @"\windows\", @"\program files\", @"\program files (x86)\", @"\appdata\local\programs\", @"\microsoft\edge\", @"\google\update\" };
 
     /// <param name="imagePath">Full path of the executable.</param>
     /// <param name="fileDescription">FileDescription / ProductName from the version resource (may be null).</param>

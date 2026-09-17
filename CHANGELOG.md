@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.1 — hot-fix after first Windows QA (17 Sep 2026)
+
+- **Fixed: every Tools dialog crashed on open** (System Cleanup, Startup Apps, File Shredder, Residual Cleaner, Windows
+  Updates, Force Uninstall, uninstall wizard…) with "Something went wrong". Cause: the shared dialog style set
+  `WindowStartupLocation`, which is not a dependency property. It is now set in code; the XAML check guards against it.
+- Software Updater shows readable failure reasons ("installer hash does not match (0x8A150011)", "installer failed with
+  1603"…) instead of raw negative exit codes.
+- Text-size drop-down now follows Ctrl + / Ctrl − / Ctrl 0.
+- Software Health score re-weighted: many flagged extensions/bloatware no longer drag the score to ~0.
+- System Cleanup card description no longer cut off.
+- Installer detection no longer reports installs started by the Software Updater, nor self-updaters of programs that are
+  already installed (Program Files, AppData\Local\Programs).
+
 ## 1.3.0 — Build 4 (16 Sep 2026)
 
 - **Text size 80–300 %** (default now **120 %**; existing settings that still had the old 100 % default are raised once).

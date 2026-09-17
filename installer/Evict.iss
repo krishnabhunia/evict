@@ -4,7 +4,7 @@
 
 #define MyAppName "Evict Uninstaller"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.3.0"
+  #define MyAppVersion "1.3.1"
 #endif
 #define MyAppPublisher "Krishna Bhunia"
 #define MyAppURL "https://github.com/krishnabhunia/evict"

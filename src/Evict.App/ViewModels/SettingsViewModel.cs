@@ -16,6 +16,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         _services = services;
         _main = main;
+        App.UiState.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(UiState.Scale)) OnPropertyChanged(nameof(TextSize)); };
         UpdateStatusText = S.LastUpdateCheckUtc is { } t ? $"Last checked {t.ToLocalTime():g}." : "Not checked yet.";
         _ = RefreshScheduleStatusAsync();
     }

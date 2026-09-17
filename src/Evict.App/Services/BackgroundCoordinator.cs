@@ -178,6 +178,9 @@ public sealed partial class BackgroundCoordinator : ObservableObject
         }
     }
 
+    /// <summary>Software Updater runs installers through winget/msiexec (not children of Evict) – don't report those.</summary>
+    public void SuspendDetection(bool suspend) => _detector.IsPaused = suspend;
+
     public void CancelRecording() { try { _recordingCts?.Cancel(); } catch { /* ignore */ } }
 
     private void ShowLog(InstallLog log)

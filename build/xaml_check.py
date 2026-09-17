@@ -19,6 +19,14 @@ for f in xaml_files:
 defined |= {"{x:Type CheckBox}", "{x:Type ProgressBar}", "{x:Type ToolTip}", "{x:Type ComboBox}"}
 
 problems = 0
+# Style setters must target dependency properties; these common Window/control CLR properties are not.
+NON_DP = {"WindowStartupLocation", "Owner", "DialogResult", "IsDefault_", "Resources", "Name"}
+for f in xaml_files:
+    text = f.read_text(encoding="utf-8")
+    for prop in re.findall(r'<Setter\s+(?:TargetName="[^"]*"\s+)?Property="([^"]+)"', text):
+        if prop in NON_DP:
+            print(f"[setter] {f.name}: Setter Property='{prop}' is not a DependencyProperty (crashes when the style is first used)")
+            problems += 1
 for f in xaml_files:
     text = f.read_text(encoding="utf-8")
     for kind, key in re.findall(r'\{(StaticResource|DynamicResource)\s+([^}]+)\}', text):

@@ -41,6 +41,8 @@ public class Build4Tests
     [InlineData(@"C:\Windows\System32\msiexec.exe", null, @"msiexec /I{GUID} /fa")]
     [InlineData(@"C:\Users\k\Downloads\rufus-4.5.exe", "Rufus – reliable USB formatting utility", null)]
     [InlineData(@"C:\Users\k\Downloads\HWiNFO64_portable.exe", null, null)]
+    [InlineData(@"C:\Users\HP\AppData\Local\Programs\Opera\assistant\assistant_installer.exe", "Opera Browser Assistant Installer", null)]
+    [InlineData(@"C:\Program Files\Foo\setup.exe", null, null)]
     [InlineData("", null, null)]
     public void Classify_IgnoresOrdinaryProgramsAndUninstallers(string path, string? description, string? commandLine)
     {

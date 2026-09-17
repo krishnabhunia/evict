@@ -48,6 +48,8 @@ public sealed partial class UiState : ObservableObject
     /// </summary>
     public void ApplyToDialog(Window window)
     {
+        // Not settable from a Style (plain CLR property), so every dialog gets it here.
+        window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var s = Scale;
         if (window.Content is FrameworkElement root) root.LayoutTransform = new ScaleTransform(s, s);
         if (Math.Abs(s - 1.0) < 0.001) return;
