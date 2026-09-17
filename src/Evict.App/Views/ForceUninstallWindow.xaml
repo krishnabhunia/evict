@@ -69,7 +69,7 @@
         <!-- ═══ Scanning ═══ -->
         <StackPanel Grid.Row="1" VerticalAlignment="Center" Visibility="{Binding Step, Converter={StaticResource EqualsToVis}, ConverterParameter=Scanning}">
             <TextBlock Style="{StaticResource Text.Section}" HorizontalAlignment="Center">
-                <Run Text="Scanning for everything that belongs to" /><Run Text="{Binding TargetName, Mode=OneWay}" />
+                <Run Text="Scanning for everything that belongs to " /><Run Text="{Binding TargetName, Mode=OneWay}" />
             </TextBlock>
             <TextBlock Text="{Binding StatusText}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" Margin="0,8,0,12" />
             <ProgressBar Value="{Binding Progress}" Maximum="100" Width="420" />
@@ -120,9 +120,9 @@
                 <StackPanel VerticalAlignment="Center" Margin="16,0,0,0">
                     <TextBlock Text="Done" Style="{StaticResource Text.Title}" />
                     <TextBlock Style="{StaticResource Text.Subtitle}">
-                        <Run Text="{Binding Removed, Mode=OneWay}" /><Run Text="item(s) removed ·" />
-                        <Run Text="{Binding Failed, Mode=OneWay}" /><Run Text="failed ·" />
-                        <Run Text="{Binding BytesReclaimedText, Mode=OneWay}" /><Run Text="reclaimed" />
+                        <Run Text="{Binding Removed, Mode=OneWay}" /><Run Text=" item(s) removed ·" />
+                        <Run Text="{Binding Failed, Mode=OneWay}" /><Run Text=" failed ·" />
+                        <Run Text="{Binding BytesReclaimedText, Mode=OneWay}" /><Run Text=" reclaimed" />
                     </TextBlock>
                 </StackPanel>
             </StackPanel>

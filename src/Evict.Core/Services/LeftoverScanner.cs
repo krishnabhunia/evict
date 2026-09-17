@@ -525,6 +525,262 @@ public sealed class LeftoverScanner
             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\Folders", loc, LeftoverConfidence.Low, "Windows Installer folder record");
         ScanValuesNamedByPath(ctx, RegistryHive.CurrentUser, RegistryView.Registry64,
             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched", loc, LeftoverConfidence.Low, "Taskbar usage record");
+
+        // 4. Deeper and shared places uninstallers commonly forget.
+        var folder = RegistryLeftoverRules.EffectiveFolder(ctx.Fp.InstallLocation, ctx.Fp.PrimaryExecutable, ctx.Fp.UninstallExePath);
+        ScanVendorSubKeys(ctx);
+        ScanOtherUninstallEntries(ctx, folder);
+        ScanClasses(ctx, folder);
+        foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+            ScanValuesNamedByPath(ctx, RegistryHive.LocalMachine, view, @"SOFTWARE\Microsoft\Windows\CurrentVersion\SharedDLLs", folder, LeftoverConfidence.High, "Shared DLL reference count");
+        ScanValuesByData(ctx, RegistryHive.LocalMachine, RegistryView.Registry64,
+            @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules", folder, LeftoverConfidence.High, "Windows Firewall rule");
+        ScanValuesByData(ctx, RegistryHive.CurrentUser, RegistryView.Registry64,
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", folder, LeftoverConfidence.High, "Startup entry");
+        ScanOtherUsers(ctx);
+    }
+
+    /// <summary>SOFTWARE\&lt;any vendor&gt;\&lt;Program&gt; – for programs whose registry vendor name differs from the publisher shown in Programs &amp; Features.</summary>
+    private static void ScanVendorSubKeys(ScanContext ctx)
+    {
+        foreach (var (hive, view) in SoftwareRoots())
+        {
+            ctx.Ct.ThrowIfCancellationRequested();
+            try
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+                using var software = baseKey.OpenSubKey("SOFTWARE");
+                if (software is null) continue;
+                foreach (var vendor in software.GetSubKeyNames())
+                {
+                    if (SkipTopLevelKeys.Contains(vendor) || NameNormalizer.Match(vendor, ctx.Keys) is not null) continue;
+                    using var vk = software.OpenSubKey(vendor);
+                    if (vk is null) continue;
+                    string[] subs;
+                    try { subs = vk.GetSubKeyNames(); } catch { continue; }
+                    if (subs.Length > 300) continue;
+                    foreach (var sub in subs)
+                    {
+                        // Exact whole-name match only (e.g. SOFTWARE\Krishna\TwoButtonApp for "Two Button App").
+                        if (NameNormalizer.Match(sub, ctx.Keys, allowFuzzy: false) == LeftoverConfidence.High)
+                            ctx.AddRegistryKey(hive, view, $"SOFTWARE\\{vendor}\\{sub}", LeftoverConfidence.Medium, $"Program key under \"{vendor}\"");
+                    }
+                }
+            }
+            catch (Exception ex) { ctx.Result.Warnings.Add($"Registry vendor keys {hive}/{view}: {ex.Message}"); }
+        }
+    }
+
+    /// <summary>Additional Programs &amp; Features entries of the same program (per-user copy, 32/64-bit duplicate, older version) that point into its folder.</summary>
+    private static void ScanOtherUninstallEntries(ScanContext ctx, string? folder)
+    {
+        var roots = new[] { (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32), (RegistryHive.CurrentUser, RegistryView.Registry64) };
+        var whole = ctx.Keys.Count > 0 ? ctx.Keys[0].Key : "";
+        foreach (var (hive, view) in roots)
+        {
+            try
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+                using var un = baseKey.OpenSubKey(UninstallSubKey);
+                if (un is null) continue;
+                foreach (var name in un.GetSubKeyNames())
+                {
+                    using var k = un.OpenSubKey(name);
+                    if (k is null) continue;
+                    var dn = k.GetValue("DisplayName") as string;
+                    if (string.IsNullOrEmpty(dn) || NameNormalizer.ToKey(dn) != whole) continue;
+                    var il = k.GetValue("InstallLocation") as string;
+                    var us = k.GetValue("UninstallString") as string;
+                    bool samePlace = folder != null && (PathUtil.IsUnder(il, folder) || RegistryLeftoverRules.ReferencesFolder(us, folder));
+                    bool uninstallerGone = RegistryLeftoverRules.ExtractPaths(us).Any(p => !File.Exists(p)) && !(us ?? "").Contains("msiexec", StringComparison.OrdinalIgnoreCase);
+                    if (samePlace && (uninstallerGone || folder != null && !Directory.Exists(folder)))
+                        ctx.AddRegistryKey(hive, view, RegistryPaths.Join(UninstallSubKey, name), LeftoverConfidence.High, "Orphaned Programs & Features entry");
+                }
+            }
+            catch { /* ignore */ }
+        }
+    }
+
+    private static readonly string[] ShellVerbParents = { @"*\shell", @"Directory\shell", @"Directory\Background\shell", @"Folder\shell", @"Drive\shell", @"AllFilesystemObjects\shell", @"exefile\shell", @"lnkfile\shell" };
+    private static readonly string[] ShellExParents = { @"*\shellex\ContextMenuHandlers", @"Directory\shellex\ContextMenuHandlers", @"Directory\Background\shellex\ContextMenuHandlers", @"Folder\shellex\ContextMenuHandlers", @"Drive\shellex\ContextMenuHandlers", @"AllFilesystemObjects\shellex\ContextMenuHandlers" };
+
+    /// <summary>
+    /// HKCU/HKLM Software\Classes: COM classes whose server file is in the program folder, ProgIDs named after the program,
+    /// Explorer context-menu verbs and handlers, and "Open with" registrations of those ProgIDs on file extensions.
+    /// </summary>
+    private static void ScanClasses(ScanContext ctx, string? folder)
+    {
+        var roots = new[] { (RegistryHive.CurrentUser, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry64), (RegistryHive.LocalMachine, RegistryView.Registry32) };
+        foreach (var (hive, view) in roots)
+        {
+            ctx.Ct.ThrowIfCancellationRequested();
+            try
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+                using var classes = baseKey.OpenSubKey(@"SOFTWARE\Classes");
+                if (classes is null) continue;
+                const string cls = @"SOFTWARE\Classes";
+                var ownClsids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var ownProgIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                // COM classes served from the program folder.
+                if (folder != null)
+                {
+                    using var clsid = classes.OpenSubKey("CLSID");
+                    if (clsid != null)
+                    {
+                        foreach (var g in clsid.GetSubKeyNames())
+                        {
+                            ctx.Ct.ThrowIfCancellationRequested();
+                            try
+                            {
+                                using var ck = clsid.OpenSubKey(g);
+                                if (ck is null) continue;
+                                string? server = null;
+                                foreach (var sname in new[] { "InprocServer32", "LocalServer32" })
+                                {
+                                    using var sk = ck.OpenSubKey(sname);
+                                    if (sk?.GetValue("") is string v) { server = v; break; }
+                                }
+                                if (server != null && RegistryLeftoverRules.ReferencesFolder(server, folder))
+                                {
+                                    ownClsids.Add(g);
+                                    ctx.AddRegistryKey(hive, view, $"{cls}\\CLSID\\{g}", LeftoverConfidence.High, "COM class served from the program folder");
+                                }
+                            }
+                            catch { /* protected CLSID */ }
+                        }
+                    }
+                }
+
+                foreach (var name in classes.GetSubKeyNames())
+                {
+                    ctx.Ct.ThrowIfCancellationRequested();
+                    if (name.StartsWith('.') || name.StartsWith('{') || name.Equals("CLSID", StringComparison.OrdinalIgnoreCase)) continue;
+                    var m = RegistryLeftoverRules.MatchProgId(name, ctx.Keys);
+                    string? cmd = null, icon = null, clsidRef = null;
+                    try
+                    {
+                        using var pk = classes.OpenSubKey(name);
+                        if (pk is null) continue;
+                        if (m is null && folder is null) continue;
+                        using (var c = pk.OpenSubKey(@"shell\open\command")) cmd = c?.GetValue("") as string;
+                        using (var i = pk.OpenSubKey("DefaultIcon")) icon = i?.GetValue("") as string;
+                        using (var cl = pk.OpenSubKey("CLSID")) clsidRef = cl?.GetValue("") as string;
+                    }
+                    catch { continue; }
+                    bool inFolder = folder != null && (RegistryLeftoverRules.ReferencesFolder(cmd, folder) || RegistryLeftoverRules.ReferencesFolder(icon, folder));
+                    bool ownCom = clsidRef != null && ownClsids.Contains(clsidRef);
+                    if (inFolder || ownCom)
+                    {
+                        ownProgIds.Add(name);
+                        ctx.AddRegistryKey(hive, view, $"{cls}\\{name}", LeftoverConfidence.High, "File type / ProgID registered by the program");
+                    }
+                    else if (m is { } mc)
+                    {
+                        var target = RegistryLeftoverRules.ExtractPaths(cmd).FirstOrDefault();
+                        if (target != null && File.Exists(target)) continue;   // still served by an installed program
+                        ownProgIds.Add(name);
+                        // Named after the program and its command points at a file that is gone → Likely; no command at all → Review.
+                        var conf = target != null && mc == LeftoverConfidence.High ? LeftoverConfidence.Medium : LeftoverConfidence.Low;
+                        ctx.AddRegistryKey(hive, view, $"{cls}\\{name}", conf, "File type / ProgID named after the program");
+                    }
+                }
+
+                // Explorer right-click verbs.
+                foreach (var parent in ShellVerbParents)
+                {
+                    using var pk = classes.OpenSubKey(parent);
+                    if (pk is null) continue;
+                    foreach (var verb in pk.GetSubKeyNames())
+                    {
+                        string? cmd = null;
+                        try { using var c = pk.OpenSubKey(verb + @"\command"); cmd = c?.GetValue("") as string; } catch { continue; }
+                        if (folder != null && RegistryLeftoverRules.ReferencesFolder(cmd, folder))
+                            ctx.AddRegistryKey(hive, view, $"{cls}\\{parent}\\{verb}", LeftoverConfidence.High, "Explorer context-menu command");
+                        else if (NameNormalizer.Match(verb, ctx.Keys, allowFuzzy: false) == LeftoverConfidence.High)
+                            ctx.AddRegistryKey(hive, view, $"{cls}\\{parent}\\{verb}", LeftoverConfidence.Medium, "Explorer context-menu command named after the program");
+                    }
+                }
+                foreach (var parent in ShellExParents)
+                {
+                    using var pk = classes.OpenSubKey(parent);
+                    if (pk is null) continue;
+                    foreach (var h in pk.GetSubKeyNames())
+                    {
+                        string? guid = null;
+                        try { using var hk = pk.OpenSubKey(h); guid = hk?.GetValue("") as string; } catch { continue; }
+                        bool own = (guid != null && ownClsids.Contains(guid)) || ownClsids.Contains(h);
+                        if (own)
+                            ctx.AddRegistryKey(hive, view, $"{cls}\\{parent}\\{h}", LeftoverConfidence.High, "Explorer context-menu handler");
+                        else if (NameNormalizer.Match(h, ctx.Keys, allowFuzzy: false) == LeftoverConfidence.High)
+                            ctx.AddRegistryKey(hive, view, $"{cls}\\{parent}\\{h}", LeftoverConfidence.Medium, "Explorer context-menu handler named after the program");
+                    }
+                }
+
+                // ".ext\OpenWithProgids" values pointing at the program's ProgIDs.
+                if (ownProgIds.Count > 0)
+                {
+                    foreach (var ext in classes.GetSubKeyNames().Where(n => n.StartsWith('.')))
+                    {
+                        try
+                        {
+                            using var ok = classes.OpenSubKey(ext + @"\OpenWithProgids");
+                            if (ok is null) continue;
+                            foreach (var v in ok.GetValueNames())
+                                if (ownProgIds.Contains(v))
+                                    ctx.AddRegistryValue(hive, view, $"{cls}\\{ext}\\OpenWithProgids", v, LeftoverKind.RegistryValue, LeftoverConfidence.High, $"\"Open with\" entry for {ext}");
+                        }
+                        catch { /* ignore */ }
+                    }
+                }
+            }
+            catch (Exception ex) { ctx.Result.Warnings.Add($"Registry classes {hive}/{view}: {ex.Message}"); }
+        }
+    }
+
+    /// <summary>Values whose *data* references the program folder (firewall rules, Run entries written by path).</summary>
+    private static void ScanValuesByData(ScanContext ctx, RegistryHive hive, RegistryView view, string subKey, string? folder, LeftoverConfidence confidence, string detail)
+    {
+        if (string.IsNullOrEmpty(folder)) return;
+        try
+        {
+            using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+            using var k = baseKey.OpenSubKey(subKey);
+            if (k is null) return;
+            foreach (var valueName in k.GetValueNames())
+            {
+                if (k.GetValue(valueName) is string data && RegistryLeftoverRules.ReferencesFolder(data, folder))
+                    ctx.AddRegistryValue(hive, view, subKey, valueName, LeftoverKind.RegistryValue, confidence, detail);
+            }
+        }
+        catch { /* access denied without admin */ }
+    }
+
+    /// <summary>With administrator rights: HKEY_USERS\&lt;other signed-in users&gt;\Software\&lt;Program&gt;.</summary>
+    private static void ScanOtherUsers(ScanContext ctx)
+    {
+        if (!ctx.Options.ScanAllUserProfiles || !ElevationHelper.IsElevated) return;
+        string? mySid = null;
+        try { mySid = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value; } catch { /* ignore */ }
+        try
+        {
+            using var users = RegistryKey.OpenBaseKey(RegistryHive.Users, RegistryView.Registry64);
+            foreach (var sid in users.GetSubKeyNames())
+            {
+                if (!sid.StartsWith("S-1-5-21-", StringComparison.Ordinal) || sid.EndsWith("_Classes", StringComparison.OrdinalIgnoreCase) || sid == mySid) continue;
+                using var sw = users.OpenSubKey(sid + @"\Software");
+                if (sw is null) continue;
+                foreach (var name in sw.GetSubKeyNames())
+                {
+                    if (SkipTopLevelKeys.Contains(name)) continue;
+                    var m = NameNormalizer.Match(name, ctx.Keys, allowFuzzy: false);
+                    if (m is { } mv && mv != LeftoverConfidence.Low)
+                        ctx.AddRegistryKey(RegistryHive.Users, RegistryView.Registry64, $"{sid}\\Software\\{name}", LeftoverConfidence.Medium, "Program key of another user account");
+                }
+            }
+        }
+        catch { /* ignore */ }
     }
 
     private static bool KeyExists(RegistryHive hive, RegistryView view, string subKey)

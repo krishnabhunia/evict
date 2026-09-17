@@ -82,5 +82,7 @@ public sealed class CleanupResult
     public int Removed { get; set; }
     public int Failed { get; set; }
     public long BytesReclaimed { get; set; }
+    /// <summary>Registry keys/values deleted and confirmed absent afterwards.</summary>
+    public int RegistryVerified { get; set; }
     public List<(LeftoverItem Item, string Error)> Errors { get; } = new();
 }

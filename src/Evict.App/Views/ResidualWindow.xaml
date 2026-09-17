@@ -84,9 +84,9 @@
                 <StackPanel VerticalAlignment="Center" Margin="16,0,0,0">
                     <TextBlock Text="Done" Style="{StaticResource Text.Title}" />
                     <TextBlock Style="{StaticResource Text.Subtitle}">
-                        <Run Text="{Binding Removed, Mode=OneWay}" /><Run Text="item(s) removed ·" />
-                        <Run Text="{Binding Failed, Mode=OneWay}" /><Run Text="failed ·" />
-                        <Run Text="{Binding BytesReclaimedText, Mode=OneWay}" /><Run Text="reclaimed" />
+                        <Run Text="{Binding Removed, Mode=OneWay}" /><Run Text=" item(s) removed ·" />
+                        <Run Text="{Binding Failed, Mode=OneWay}" /><Run Text=" failed ·" />
+                        <Run Text="{Binding BytesReclaimedText, Mode=OneWay}" /><Run Text=" reclaimed" />
                     </TextBlock>
                 </StackPanel>
             </StackPanel>

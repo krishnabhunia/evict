@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.3 — deeper registry cleanup, verified (17 Sep 2026)
+
+- **Registry leftovers after an uninstall – wider search.** Besides SOFTWARE\<Program>, SOFTWARE\<Publisher>\<Program>,
+  App Paths, Run keys and compatibility records, the Powerful Scan now also finds:
+  program keys under *any* vendor key (SOFTWARE\<vendor>\<Program>), duplicate/orphaned Programs & Features entries,
+  COM classes (CLSID) served from the program folder, file types / ProgIDs of the program, Explorer right-click
+  commands and context-menu handlers, "Open with" entries on file extensions, Shared DLL records, Windows Firewall rules
+  for the program's executables, and (as administrator) the program key of other signed-in users.
+- **Every registry deletion is verified**: after deleting, Evict checks the key/value is really gone. The wizard's
+  summary shows "Registry: N of M keys/values removed and verified gone" and names the items that need administrator
+  rights (HKLM) instead of a raw "access denied".
+- Missing spaces fixed in several "N item(s) …" texts (wizard, Force Uninstall, File Shredder, Install Monitor, Settings).
+
 ## 1.3.2 — second Windows QA pass (17 Sep 2026)
 
 - **Install Monitor: detected installations were recorded empty** (e.g. "TwoButtonApp – 0 folders, 0 files"). In *Ask* mode

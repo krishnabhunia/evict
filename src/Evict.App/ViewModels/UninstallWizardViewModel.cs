@@ -88,6 +88,8 @@ public sealed partial class UninstallWizardViewModel : ObservableObject
     [ObservableProperty] private int _programsWithWarnings;
     [ObservableProperty] private int _leftoversRemoved;
     [ObservableProperty] private int _leftoversFailed;
+    /// <summary>"Registry: 7 of 8 keys/values removed and verified gone · 1 needs administrator rights" (null when no registry items).</summary>
+    [ObservableProperty] private string? _registrySummary;
     [ObservableProperty] private long _bytesReclaimed;
     [ObservableProperty] private bool _rebootRecommended;
     public ObservableCollection<string> Errors { get; } = new();
@@ -226,6 +228,15 @@ public sealed partial class UninstallWizardViewModel : ObservableObject
         BytesReclaimed = result.BytesReclaimed;
         foreach (var (item, error) in result.Errors) Errors.Add($"{item.Path}: {error}");
         Log($"Cleanup: {result.Removed} removed, {result.Failed} failed, {SizeFormatter.Format(result.BytesReclaimed)} reclaimed.");
+        int regTotal = items.Count(i => i.Kind is LeftoverKind.RegistryKey or LeftoverKind.RegistryValue or LeftoverKind.StartupEntry);
+        int adminNeeded = result.Errors.Count(e => e.Error.Contains("Administrator rights", StringComparison.Ordinal));
+        if (regTotal > 0)
+        {
+            RegistrySummary = $"Registry: {result.RegistryVerified} of {regTotal} key(s)/value(s) removed and verified gone"
+                              + (adminNeeded > 0 ? $" · {adminNeeded} need administrator rights (Restart as administrator → Tools → Residual Cleaner)." : ".");
+            Log(RegistrySummary);
+        }
+        if (adminNeeded > 0) Log($"{adminNeeded} item(s) need administrator rights – restart Evict as administrator and run Tools → Residual Cleaner to remove them.");
         AnythingChanged = true;
         Finish(items.Count);
     }

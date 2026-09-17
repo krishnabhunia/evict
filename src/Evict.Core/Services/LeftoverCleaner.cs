@@ -53,6 +53,12 @@ public sealed class LeftoverCleaner
                 LeftoverKind.ScheduledTask => DeleteScheduledTask(item),
                 _ => "Unknown item type",
             };
+            // Registry: confirm the key/value is really gone (virtualisation, ACLs or a running program can recreate it).
+            if (error is null && item.Kind is LeftoverKind.RegistryKey or LeftoverKind.RegistryValue or LeftoverKind.StartupEntry)
+            {
+                if (RegistryItemExists(item)) error = "Still present after deletion (a running program or permissions restored it).";
+                else result.RegistryVerified++;
+            }
             if (error is null)
             {
                 result.Removed++;
@@ -167,8 +173,28 @@ public sealed class LeftoverCleaner
             parentKey.DeleteSubKeyTree(leaf, throwOnMissingSubKey: false);
             return null;
         }
-        catch (Exception ex) { return ex.Message; }
+        catch (Exception ex) { return FriendlyRegistryError(ex, item); }
     }
+
+    /// <summary>True when the registry key (or value) described by the item still exists.</summary>
+    public static bool RegistryItemExists(LeftoverItem item)
+    {
+        if (item.Hive is null || string.IsNullOrEmpty(item.SubKey)) return false;
+        try
+        {
+            using var baseKey = RegistryKey.OpenBaseKey(item.Hive.Value, item.RegView);
+            using var key = baseKey.OpenSubKey(item.SubKey);
+            if (key is null) return false;
+            if (item.Kind == LeftoverKind.RegistryKey) return true;
+            return item.ValueName != null && key.GetValueNames().Contains(item.ValueName, StringComparer.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    private static string FriendlyRegistryError(Exception ex, LeftoverItem item) =>
+        ex is System.Security.SecurityException or UnauthorizedAccessException
+            ? (item.Hive == RegistryHive.CurrentUser ? "Access denied (the key is protected)." : "Administrator rights are required to change this part of the registry – restart Evict as administrator.")
+            : ex.Message;
 
     private static string? DeleteRegistryValue(LeftoverItem item)
     {
@@ -181,7 +207,7 @@ public sealed class LeftoverCleaner
             key.DeleteValue(item.ValueName, throwOnMissingValue: false);
             return null;
         }
-        catch (Exception ex) { return ex.Message; }
+        catch (Exception ex) { return FriendlyRegistryError(ex, item); }
     }
 
     // ───────────────────────────── services / tasks ─────────────────────────────
